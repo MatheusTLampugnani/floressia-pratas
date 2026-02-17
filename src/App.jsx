@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge } from 'react-bootstrap';
-import { FaShoppingCart, FaWhatsapp, FaTrash } from 'react-icons/fa';
+import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaFacebook, FaPhone, FaEnvelope, FaTruck, FaCreditCard, FaGift, FaGem } from 'react-icons/fa';
 import { supabase } from './supabase';
 import { CartProvider, useCart } from './context/CartContext';
 import Admin from './pages/Admin';
@@ -166,6 +166,46 @@ function Store() {
         </Container>
       </div>
 
+      <div className="bg-white py-4 border-bottom mb-5">
+        <Container>
+          <Row className="gy-4 justify-content-center">
+            
+            <Col xs={12} md={6} lg={3} className="d-flex align-items-center justify-content-center gap-3">
+              <FaTruck size={24} style={{ color: '#8b8f86' }} />
+              <div className="text-start">
+                <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>Envios Ágeis</h6>
+                <small className="text-muted" style={{ fontSize: '0.7rem' }}>Postagem em até 24h</small>
+              </div>
+            </Col>
+
+            <Col xs={12} md={6} lg={3} className="d-flex align-items-center justify-content-center gap-3">
+              <FaCreditCard size={24} style={{ color: '#8b8f86' }} />
+              <div className="text-start">
+                <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>Até 6x Sem Juros</h6>
+                <small className="text-muted" style={{ fontSize: '0.7rem' }}>Mínimo R$ 50,00</small>
+              </div>
+            </Col>
+
+            <Col xs={12} md={6} lg={3} className="d-flex align-items-center justify-content-center gap-3">
+              <FaGift size={24} style={{ color: '#8b8f86' }} />
+              <div className="text-start">
+                <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>Frete Grátis</h6>
+                <small className="text-muted" style={{ fontSize: '0.7rem' }}>Acima de R$ 300</small>
+              </div>
+            </Col>
+
+            <Col xs={12} md={6} lg={3} className="d-flex align-items-center justify-content-center gap-3">
+              <FaGem size={24} style={{ color: '#8b8f86' }} />
+              <div className="text-start">
+                <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>5% OFF no Pix</h6>
+                <small className="text-muted" style={{ fontSize: '0.7rem' }}>Pagamento à vista</small>
+              </div>
+            </Col>
+
+          </Row>
+        </Container>
+      </div>
+
       <Container className="py-4">
         {filtro === 'todos' && destaques.length > 0 && (
           <div className="mb-5">
@@ -213,16 +253,80 @@ function Store() {
   );
 }
 
+function Footer() {
+  return (
+    <footer className="bg-white border-top pt-5 pb-3 mt-auto">
+      <Container>
+        <Row className="gy-4">
+          <Col md={3}>
+            <h6 className="fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '1px' }}>SIGA-NOS</h6>
+            <div className="d-flex gap-2">
+              <Button variant="dark" size="sm" className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '35px', height: '35px' }}>
+                <FaInstagram size={18} />
+              </Button>
+              <Button variant="dark" size="sm" className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '35px', height: '35px' }}>
+                <FaFacebook size={18} />
+              </Button>
+            </div>
+          </Col>
+
+          <Col md={3}>
+            <h6 className="fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '1px' }}>INSTITUCIONAL</h6>
+            <ul className="list-unstyled text-muted small" style={{ lineHeight: '2' }}>
+              <li><a href="#" className="text-decoration-none text-secondary">Trocas e Devoluções</a></li>
+              <li><a href="#" className="text-decoration-none text-secondary">Dúvidas Frequentes</a></li>
+            </ul>
+          </Col>
+
+          <Col md={3}>
+            <h6 className="fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '1px' }}>CONTATO</h6>
+            <ul className="list-unstyled text-muted small" style={{ lineHeight: '2' }}>
+              <li><FaPhone className="me-2" /> (11) 9999-9999</li>
+              <li><FaWhatsapp className="me-2" /> (11) 99999-9999</li>
+              <li><FaEnvelope className="me-2" /> contato@floressia.com</li>
+            </ul>
+          </Col>
+
+          <Col md={3}>
+            <h6 className="fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '1px' }}>MINHA CONTA</h6>
+            <ul className="list-unstyled text-muted small" style={{ lineHeight: '2' }}>
+              <li><Link to="/admin" className="text-decoration-none text-secondary">Área do Admin</Link></li>
+            </ul>
+          </Col>
+        </Row>
+
+        <hr className="my-5" />
+
+        <Row className="align-items-center">
+          <Col md={6} className="text-center text-md-start mb-3 mb-md-0">
+            <small className="text-muted">© 2026 Floressia Pratas. Todos os direitos reservados.</small>
+          </Col>
+          <Col md={6} className="text-center text-md-end">
+            <div className="d-inline-flex gap-2 align-items-center grayscale-hover">
+               <div className="border rounded p-1 px-2 text-muted small"><FaWhatsapp className="text-success"/> WhatsApp Seguro</div>
+               <div className="border rounded p-1 px-2 text-muted small">🔒 SSL Certificado</div>
+               <div className="border rounded p-1 px-2 text-muted small">🛡️ Google Safe</div>
+            </div>
+          </Col>
+        </Row>
+      </Container>
+    </footer>
+  );
+}
+
 export default function App() {
   return (
     <CartProvider>
       <BrowserRouter>
-        <Header />
-        <Routes>
-          <Route path="/" element={<Store />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/produto/:id" element={<ProductDetails />} />
-        </Routes>
+        <div className="d-flex flex-column min-vh-100"> 
+          <Header />
+          <Routes>
+            <Route path="/" element={<Store />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/produto/:id" element={<ProductDetails />} />
+          </Routes>
+          <Footer />
+        </div>
         <ShoppingCart />
       </BrowserRouter>
     </CartProvider>
