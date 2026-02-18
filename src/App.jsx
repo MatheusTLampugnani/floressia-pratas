@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge } from 'react-bootstrap';
-import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaFacebook, FaPhone, FaEnvelope, FaTruck, FaCreditCard, FaGift, FaGem } from 'react-icons/fa';
+import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaPhone, FaEnvelope, FaTruck, FaCreditCard, FaGift, FaGem, FaTiktok, FaBarcode, FaLock, FaRegEnvelope, FaQrcode } from 'react-icons/fa';
 import { supabase } from './supabase';
 import { CartProvider, useCart } from './context/CartContext';
 import Admin from './pages/Admin';
@@ -254,59 +254,81 @@ function Store() {
 }
 
 function Footer() {
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className="bg-white border-top pt-5 pb-3 mt-auto">
       <Container>
-        <Row className="gy-4">
-          <Col md={3}>
-            <h6 className="fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '1px' }}>SIGA-NOS</h6>
-            <div className="d-flex gap-2">
-              <Button variant="dark" size="sm" className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '35px', height: '35px' }}>
-                <FaInstagram size={18} />
-              </Button>
-              <Button variant="dark" size="sm" className="rounded-circle d-flex align-items-center justify-content-center" style={{ width: '35px', height: '35px' }}>
-                <FaFacebook size={18} />
-              </Button>
+        <Row className="gy-5">
+          <Col lg={3} md={6} className="text-center text-md-start">
+            <h6 className="fw-bold mb-3" style={{ fontSize: '0.9rem', letterSpacing: '1px' }}>SIGA-NOS</h6>
+            
+            <div className="d-flex gap-2 justify-content-center justify-content-md-start">
+              
+              <a 
+                href="https://instagram.com/floressiapratas" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="btn btn-dark btn-sm rounded-circle d-flex align-items-center justify-content-center p-0" 
+                style={{ width: '35px', height: '35px', transition: 'all 0.3s' }}
+                title="Siga-nos no Instagram"
+              >
+                <FaInstagram size={18} color="white" />
+              </a>
+
+              <a 
+                href="https://tiktok.com/@floressiapratas" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="btn btn-dark btn-sm rounded-circle d-flex align-items-center justify-content-center p-0" 
+                style={{ width: '35px', height: '35px', transition: 'all 0.3s' }}
+                title="Siga-nos no TikTok"
+              >
+                <FaTiktok size={16} color="white" />
+              </a>
+
             </div>
           </Col>
 
-          <Col md={3}>
-            <h6 className="fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '1px' }}>INSTITUCIONAL</h6>
-            <ul className="list-unstyled text-muted small" style={{ lineHeight: '2' }}>
-              <li><a href="#" className="text-decoration-none text-secondary">Trocas e Devoluções</a></li>
-              <li><a href="#" className="text-decoration-none text-secondary">Dúvidas Frequentes</a></li>
+          <Col lg={3} md={6} sm={6}>
+            <h6 className="fw-bold mb-3 text-center text-sm-start" style={{ fontSize: '0.9rem', letterSpacing: '1px' }}>INSTITUCIONAL</h6>
+            <ul className="list-unstyled text-muted small text-center text-sm-start" style={{ lineHeight: '2.2' }}>
+              <li><a href="#" className="text-decoration-none text-secondary hover-link">Quem Somos</a></li>
+              <li><a href="#" className="text-decoration-none text-secondary hover-link">Política de Privacidade</a></li>
+              <li><a href="#" className="text-decoration-none text-secondary hover-link">Termos e Condições</a></li>
+              <li><a href="#" className="text-decoration-none text-secondary hover-link">Trocas e Devoluções</a></li>
             </ul>
           </Col>
 
-          <Col md={3}>
-            <h6 className="fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '1px' }}>CONTATO</h6>
-            <ul className="list-unstyled text-muted small" style={{ lineHeight: '2' }}>
-              <li><FaPhone className="me-2" /> (11) 9999-9999</li>
-              <li><FaWhatsapp className="me-2" /> (11) 99999-9999</li>
-              <li><FaEnvelope className="me-2" /> contato@floressia.com</li>
+          <Col lg={3} md={6} sm={6}>
+            <h6 className="fw-bold mb-3 text-center text-sm-start" style={{ fontSize: '0.9rem', letterSpacing: '1px' }}>ATENDIMENTO</h6>
+            <ul className="list-unstyled text-muted small text-center text-sm-start" style={{ lineHeight: '1.8' }}>
+              <li className="mb-2"><FaWhatsapp className="me-2 text-success" size={16} /> (11) 99999-9999</li>
+              <li className="mb-2"><FaRegEnvelope className="me-2" size={16} />floressiapratas@gmail.com</li>
+              <li className="mt-3">Seg. a Sex. das 9h às 18h</li>
             </ul>
           </Col>
 
-          <Col md={3}>
-            <h6 className="fw-bold mb-3" style={{ fontSize: '0.8rem', letterSpacing: '1px' }}>MINHA CONTA</h6>
-            <ul className="list-unstyled text-muted small" style={{ lineHeight: '2' }}>
-              <li><Link to="/admin" className="text-decoration-none text-secondary">Área do Admin</Link></li>
-            </ul>
+          <Col lg={3} md={6}>
+             <h6 className="fw-bold mb-3 text-center text-md-start" style={{ fontSize: '0.9rem', letterSpacing: '1px' }}>PAGAMENTO & SEGURANÇA</h6>
+             <div className="d-flex gap-2 mb-4 flex-wrap justify-content-center justify-content-md-start">
+                 <div className="border p-1 rounded bg-light" title="Cartão"><FaCreditCard size={20} className="text-secondary"/></div>
+                 <div className="border p-1 rounded bg-light" title="Boleto"><FaBarcode size={20} className="text-secondary"/></div>
+                 <div className="border p-1 rounded bg-light" title="Pix"><FaGem size={20} className="text-secondary"/></div>
+             </div>
+              <div className="d-flex gap-2 justify-content-center justify-content-md-start">
+                 <div className="border px-2 py-1 rounded bg-light small"><FaLock className="text-success me-1"/> Site Seguro</div>
+             </div>
           </Col>
         </Row>
 
-        <hr className="my-5" />
+        <hr className="my-4" />
 
-        <Row className="align-items-center">
-          <Col md={6} className="text-center text-md-start mb-3 mb-md-0">
-            <small className="text-muted">© 2026 Floressia Pratas. Todos os direitos reservados.</small>
-          </Col>
-          <Col md={6} className="text-center text-md-end">
-            <div className="d-inline-flex gap-2 align-items-center grayscale-hover">
-               <div className="border rounded p-1 px-2 text-muted small"><FaWhatsapp className="text-success"/> WhatsApp Seguro</div>
-               <div className="border rounded p-1 px-2 text-muted small">🔒 SSL Certificado</div>
-               <div className="border rounded p-1 px-2 text-muted small">🛡️ Google Safe</div>
-            </div>
+        <Row className="align-items-center gy-3">
+          <Col md={12} className="text-center">
+            <small className="text-muted">
+              © {currentYear} <strong>Floressia Pratas</strong>. Todos os direitos reservados.
+            </small>
           </Col>
         </Row>
       </Container>
@@ -320,11 +342,13 @@ export default function App() {
       <BrowserRouter>
         <div className="d-flex flex-column min-vh-100"> 
           <Header />
+          
           <Routes>
             <Route path="/" element={<Store />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/produto/:id" element={<ProductDetails />} />
           </Routes>
+
           <Footer />
         </div>
         <ShoppingCart />
