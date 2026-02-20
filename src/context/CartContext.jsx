@@ -17,6 +17,17 @@ export function CartProvider({ children }) {
     setShowCart(true);
   };
 
+  const decreaseQuantity = (id) => {
+    setCartItems(currItems => {
+      return currItems.map(item => {
+        if (item.id === id) {
+          return { ...item, quantity: item.quantity - 1 };
+        }
+        return item;
+      }).filter(item => item.quantity > 0);
+    });
+  };
+
   const removeFromCart = (id) => {
     setCartItems(currItems => currItems.filter(item => item.id !== id));
   };
@@ -24,7 +35,7 @@ export function CartProvider({ children }) {
   const cartTotal = cartItems.reduce((total, item) => total + (item.preco * item.quantity), 0);
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, showCart, setShowCart, cartTotal }}>
+    <CartContext.Provider value={{ cartItems, addToCart, decreaseQuantity, removeFromCart, showCart, setShowCart, cartTotal }}>
       {children}
     </CartContext.Provider>
   );

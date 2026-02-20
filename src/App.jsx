@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Outlet } from 'react-router-dom';
 import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge } from 'react-bootstrap';
-import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaPhone, FaEnvelope, FaTruck, FaCreditCard, FaGift, FaGem, FaTiktok, FaBarcode, FaLock, FaRegEnvelope, FaQrcode } from 'react-icons/fa';
+import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope } from 'react-icons/fa';
 import { supabase } from './supabase';
 import { CartProvider, useCart } from './context/CartContext';
 import Admin from './pages/Admin';
 import ProductDetails from './pages/ProductDetails';
+import Login from './pages/Login';
 
 function ProductCard({ product }) {
   const { addToCart } = useCart();
@@ -46,46 +47,112 @@ function ProductCard({ product }) {
 }
 
 function ShoppingCart() {
-  const { showCart, setShowCart, cartItems, removeFromCart, cartTotal } = useCart();
+  const { showCart, setShowCart, cartItems, addToCart, decreaseQuantity, removeFromCart, cartTotal } = useCart();
   const PHONE_NUMBER = "5511999999999"; 
 
   const checkoutWhatsApp = () => {
     if (cartItems.length === 0) return;
-    let message = "*Olá! Gostaria de fazer o seguinte pedido:*\n\n";
+    let message = "*Olá! Gostaria de finalizar meu pedido na Floressia:*\n\n";
     cartItems.forEach(item => {
-      message += `• ${item.quantity}x ${item.nome} - R$ ${(item.preco * item.quantity).toFixed(2)}\n`;
+      message += `• ${item.quantity}x ${item.nome}\n   (R$ ${(item.preco * item.quantity).toFixed(2)})\n`;
     });
-    message += `\n*Total: R$ ${cartTotal.toFixed(2)}*`;
-    message += "\n\nComo podemos prosseguir?";
+    message += `\n*Valor Total: R$ ${cartTotal.toFixed(2)}*`;
+    message += "\n\nAguardo instruções para pagamento e entrega.";
     const url = `https://wa.me/${PHONE_NUMBER}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
 
   return (
-    <Offcanvas show={showCart} onHide={() => setShowCart(false)} placement="end">
-      <Offcanvas.Header closeButton>
-        <Offcanvas.Title style={{fontFamily: 'Playfair Display'}}>Sua Sacola</Offcanvas.Title>
+    <Offcanvas show={showCart} onHide={() => setShowCart(false)} placement="end" style={{ width: '400px' }}>
+      <Offcanvas.Header closeButton className="border-bottom">
+        <Offcanvas.Title style={{ fontFamily: 'Playfair Display', fontSize: '1.5rem' }}>
+          Sua Sacola ({cartItems.length})
+        </Offcanvas.Title>
       </Offcanvas.Header>
-      <Offcanvas.Body>
+      
+      <Offcanvas.Body className="d-flex flex-column p-0">
         {cartItems.length === 0 ? (
-          <p className="text-center text-muted mt-5">Sua sacola está vazia.</p>
+          <div className="text-center my-auto p-4">
+            <FaShoppingCart size={50} className="text-muted mb-3 opacity-25" />
+            <h5 className="text-muted">Sua sacola está vazia</h5>
+            <p className="small text-secondary mb-4">Que tal explorar nossas novidades?</p>
+            <Button variant="dark" onClick={() => setShowCart(false)}>Começar a Comprar</Button>
+          </div>
         ) : (
           <>
-            {cartItems.map(item => (
-              <div key={item.id} className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
-                <div>
-                  <strong>{item.nome}</strong>
-                  <div className="text-muted small">{item.quantity}x R$ {item.preco.toFixed(2)}</div>
+            <div className="flex-grow-1 overflow-auto p-3">
+              {cartItems.map(item => (
+                <div key={item.id} className="d-flex align-items-center mb-4 pb-4 border-bottom position-relative">
+                  
+                  <div className="flex-shrink-0 bg-light rounded overflow-hidden" style={{ width: '80px', height: '80px' }}>
+                    <img 
+                      src={item.imagem_url || "https://placehold.co/100"} 
+                      alt={item.nome} 
+                      className="w-100 h-100 object-fit-cover" 
+                    />
+                  </div>
+
+                  <div className="flex-grow-1 ms-3">
+                    <div className="d-flex justify-content-between align-items-start">
+                      <h6 className="mb-1 fw-bold text-truncate" style={{ maxWidth: '180px' }}>{item.nome}</h6>
+                      <button 
+                        onClick={() => removeFromCart(item.id)} 
+                        className="btn btn-link text-danger p-0 text-decoration-none"
+                        title="Remover item"
+                      >
+                        <FaTrash size={14} />
+                      </button>
+                    </div>
+                    
+                    <p className="mb-2 text-muted small" style={{ fontSize: '0.85rem' }}>
+                      Unitário: R$ {item.preco.toFixed(2).replace('.', ',')}
+                    </p>
+
+                    <div className="d-flex align-items-center justify-content-between">
+                      <div className="d-flex align-items-center border rounded">
+                        <button 
+                          onClick={() => decreaseQuantity(item.id)}
+                          className="btn btn-sm px-2 py-0 border-end"
+                          style={{ height: '28px' }}
+                        >
+                          -
+                        </button>
+                        <span className="px-3 small fw-bold">{item.quantity}</span>
+                        <button 
+                          onClick={() => addToCart(item)}
+                          className="btn btn-sm px-2 py-0 border-start"
+                          style={{ height: '28px' }}
+                        >
+                          +
+                        </button>
+                      </div>
+                      <span className="fw-bold text-dark">
+                        R$ {(item.preco * item.quantity).toFixed(2).replace('.', ',')}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <Button variant="outline-danger" size="sm" onClick={() => removeFromCart(item.id)}>
-                  <FaTrash />
-                </Button>
+              ))}
+            </div>
+
+            <div className="bg-light p-4 border-top mt-auto">
+              <div className="d-flex justify-content-between align-items-end mb-3">
+                <span className="text-muted">Subtotal</span>
+                <h3 className="mb-0 fw-bold" style={{ fontFamily: 'Playfair Display' }}>
+                  R$ {cartTotal.toFixed(2).replace('.', ',')}
+                </h3>
               </div>
-            ))}
-            <div className="mt-4 pt-3 border-top">
-              <h4>Total: R$ {cartTotal.toFixed(2).replace('.', ',')}</h4>
-              <Button variant="success" className="w-100 mt-3 py-2" onClick={checkoutWhatsApp}>
-                <FaWhatsapp className="me-2" /> Finalizar Pedido
+              <small className="d-block text-muted mb-3 text-center">
+                Frete e descontos calculados no WhatsApp
+              </small>
+              <Button 
+                variant="success" 
+                size="lg" 
+                className="w-100 rounded-0 d-flex align-items-center justify-content-center gap-2 text-white fw-bold py-3" 
+                onClick={checkoutWhatsApp}
+                style={{ background: '#25D366', borderColor: '#25D366' }}
+              >
+                <FaWhatsapp size={24} /> FINALIZAR PEDIDO
               </Button>
             </div>
           </>
@@ -113,11 +180,11 @@ function Header() {
           <Button 
             variant="outline-dark" 
             onClick={() => setShowCart(true)} 
-            className="position-relative border-0"
+            className="position-relative border-0 p-2 d-flex align-items-center justify-content-center"
           >
             <FaShoppingCart size={22} />
             {cartItems.length > 0 && (
-              <Badge bg="dark" className="position-absolute top-0 start-100 translate-middle rounded-circle">
+              <Badge bg="dark" className="position-absolute top-0 start-100 translate-middle rounded-circle" style={{ fontSize: '0.65rem' }}>
                 {cartItems.length}
               </Badge>
             )}
@@ -264,7 +331,6 @@ function Footer() {
             <h6 className="fw-bold mb-3" style={{ fontSize: '0.9rem', letterSpacing: '1px' }}>SIGA-NOS</h6>
             
             <div className="d-flex gap-2 justify-content-center justify-content-md-start">
-              
               <a 
                 href="https://instagram.com/floressiapratas" 
                 target="_blank" 
@@ -275,7 +341,6 @@ function Footer() {
               >
                 <FaInstagram size={18} color="white" />
               </a>
-
               <a 
                 href="https://tiktok.com/@floressiapratas" 
                 target="_blank" 
@@ -286,7 +351,6 @@ function Footer() {
               >
                 <FaTiktok size={16} color="white" />
               </a>
-
             </div>
           </Col>
 
@@ -305,7 +369,6 @@ function Footer() {
             <ul className="list-unstyled text-muted small text-center text-sm-start" style={{ lineHeight: '1.8' }}>
               <li className="mb-2"><FaWhatsapp className="me-2 text-success" size={16} /> (11) 99999-9999</li>
               <li className="mb-2"><FaRegEnvelope className="me-2" size={16} />floressiapratas@gmail.com</li>
-              <li className="mt-3">Seg. a Sex. das 9h às 18h</li>
             </ul>
           </Col>
 
@@ -325,10 +388,15 @@ function Footer() {
         <hr className="my-4" />
 
         <Row className="align-items-center gy-3">
-          <Col md={12} className="text-center">
+          <Col md={6} className="text-center text-md-start">
             <small className="text-muted">
               © {currentYear} <strong>Floressia Pratas</strong>. Todos os direitos reservados.
             </small>
+          </Col>
+          <Col md={6} className="text-center text-md-end">
+            <Link to="/login" className="text-muted text-decoration-none" style={{ fontSize: '0.75rem' }}>
+              <FaLock className="me-1 mb-1" size={10} /> Área Restrita
+            </Link>
           </Col>
         </Row>
       </Container>
@@ -336,22 +404,33 @@ function Footer() {
   );
 }
 
+function StoreLayout() {
+  return (
+    <div className="d-flex flex-column min-vh-100">
+      <Header />
+      
+      <Outlet /> 
+      
+      <Footer />
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <CartProvider>
       <BrowserRouter>
-        <div className="d-flex flex-column min-vh-100"> 
-          <Header />
-          
-          <Routes>
+        
+        <Routes>
+          <Route element={<StoreLayout />}>
             <Route path="/" element={<Store />} />
-            <Route path="/admin" element={<Admin />} />
             <Route path="/produto/:id" element={<ProductDetails />} />
-          </Routes>
-
-          <Footer />
-        </div>
+          </Route>
+          <Route path="/login" element={<Login />} />
+          <Route path="/admin" element={<Admin />} />
+        </Routes>
         <ShoppingCart />
+        
       </BrowserRouter>
     </CartProvider>
   );
