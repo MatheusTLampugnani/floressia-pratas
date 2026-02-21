@@ -1,10 +1,18 @@
-import { createContext, useState, useContext } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(() => {
+    const carrinhoSalvo = localStorage.getItem('floressia_cart');
+    return carrinhoSalvo ? JSON.parse(carrinhoSalvo) : [];
+  });
+  
   const [showCart, setShowCart] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('floressia_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
 
   const addToCart = (product) => {
     setCartItems(currItems => {
@@ -41,4 +49,6 @@ export function CartProvider({ children }) {
   );
 }
 
-export const useCart = () => useContext(CartContext);
+export function useCart() {
+  return useContext(CartContext);
+}
