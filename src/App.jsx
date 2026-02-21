@@ -8,6 +8,7 @@ import Admin from './pages/Admin';
 import ProductDetails from './pages/ProductDetails';
 import Login from './pages/Login';
 import Fornecedores from './pages/Fornecedores';
+import logoMarca from './assets/banner-floressia.png';
 
 // --- CARD DO PRODUTO ---
 function ProductCard({ product }) {
@@ -170,7 +171,7 @@ function Header() {
       <Container className="position-relative">
         <Navbar.Brand as={Link} to="/" className="mx-auto mx-lg-0">
           <img 
-            src="src/assets/banner-floressia.png" 
+            src={logoMarca} 
             alt="Floréssia Pratas" 
             style={{ maxHeight: '50px', width: 'auto' }} 
             className="logo-img"
@@ -244,7 +245,7 @@ function Store() {
         </Container>
       </div>
 
-{/* BARRA DE BENEFÍCIOS (Estilo Premium) */}
+      {/* BARRA DE BENEFÍCIOS (Estilo Premium) */}
       <div className="bg-light py-4 mb-5">
         <Container>
           <Row className="gy-4 justify-content-center">
