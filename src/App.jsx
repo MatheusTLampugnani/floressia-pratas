@@ -84,7 +84,7 @@ function ShoppingCart() {
 
   const checkoutWhatsApp = () => {
     if (cartItems.length === 0) return;
-    let message = "*Olá! Gostaria de finalizar meu pedido na Floressia:*\n\n";
+    let message = "*Olá! Gostaria de finalizar meu pedido na Floréssia:*\n\n";
     cartItems.forEach(item => {
       message += `• ${item.quantity}x ${item.nome}\n   (R$ ${(item.preco * item.quantity).toFixed(2)})\n`;
     });
@@ -171,7 +171,7 @@ function Header() {
         <Navbar.Brand as={Link} to="/" className="mx-auto mx-lg-0">
           <img 
             src="src/assets/banner-floressia.png" 
-            alt="Floressia Pratas" 
+            alt="Floréssia Pratas" 
             style={{ maxHeight: '50px', width: 'auto' }} 
             className="logo-img"
           />

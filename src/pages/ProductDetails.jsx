@@ -135,7 +135,7 @@ export default function ProductDetails() {
           </div>
 
           <p className="text-muted mb-5" style={{lineHeight: '1.8', fontSize: '1.05rem'}}>
-            {product.descricao || "Uma peça exclusiva da coleção Floressia Pratas. Acabamento impecável e design sofisticado para realçar sua beleza."}
+            {product.descricao || "Uma peça exclusiva da coleção Floréssia Pratas. Acabamento impecável e design sofisticado para realçar sua beleza."}
           </p>
 
           <div className="d-grid gap-3 d-md-flex">
