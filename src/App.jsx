@@ -264,7 +264,7 @@ function Store() {
               <div className="d-flex align-items-center gap-3 text-start">
                 <FaCreditCard size={26} className="text-dark" />
                 <div>
-                  <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>6x Sem Juros</h6>
+                  <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Pagamento Parcelado</h6>
                   <small className="text-muted d-none d-md-block" style={{ fontSize: '0.7rem' }}>Parc. Min R$ 50</small>
                 </div>
               </div>
@@ -284,8 +284,8 @@ function Store() {
               <div className="d-flex align-items-center gap-3 text-start">
                 <FaGem size={26} className="text-dark" />
                 <div>
-                  <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>5% OFF no Pix</h6>
-                  <small className="text-muted d-none d-md-block" style={{ fontSize: '0.7rem' }}>Pagamento à vista</small>
+                  <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Prata 925 Legítima</h6>
+                  <small className="text-muted d-none d-md-block" style={{ fontSize: '0.7rem' }}>Garantia de qualidade</small>
                 </div>
               </div>
             </Col>
