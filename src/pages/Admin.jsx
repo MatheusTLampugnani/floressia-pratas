@@ -206,6 +206,7 @@ export default function Admin() {
                     <option value="brincos">Brincos</option>
                     <option value="colares">Colares</option>
                     <option value="pulseiras">Pulseiras</option>
+                    <option value="pingentes">Pingentes</option>
                   </Form.Select>
                 </Col>
                 <Col md={3} className="d-flex align-items-end pb-1">

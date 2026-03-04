@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Container, Row, Col, Button, Spinner, Badge, Form, Alert } from 'react-bootstrap';
-import { FaWhatsapp, FaShoppingCart, FaArrowLeft, FaStar } from 'react-icons/fa';
+import { FaWhatsapp, FaShoppingCart, FaArrowLeft } from 'react-icons/fa';
 import { supabase } from '../supabase';
 import { useCart } from '../context/CartContext';
 
@@ -11,6 +11,7 @@ export default function ProductDetails() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [imagemPrincipal, setImagemPrincipal] = useState('');
+  const [tamanhoSelecionado, setTamanhoSelecionado] = useState('');
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [nomeAvaliacao, setNomeAvaliacao] = useState('');
   const [textoAvaliacao, setTextoAvaliacao] = useState('');
@@ -26,11 +27,9 @@ export default function ProductDetails() {
         setProduct(prodData);
         setImagemPrincipal(prodData.imagem_url || "https://placehold.co/500");
       }
-      
       await fetchAvaliacoes();
       setLoading(false);
     }
-    
     fetchData();
     window.scrollTo(0, 0); 
   }, [id]);
@@ -44,16 +43,14 @@ export default function ProductDetails() {
     e.preventDefault();
     setLoadingAvaliacao(true);
     setMensagemAvaliacao(null);
-
     try {
       const { error } = await supabase.from('avaliacoes').insert([
         { produto_id: id, nome_cliente: nomeAvaliacao, comentario: textoAvaliacao, nota: notaAvaliacao }
       ]);
       if (error) throw error;
-      
       setMensagemAvaliacao({ tipo: 'success', texto: 'Sua avaliação foi enviada com sucesso! Muito obrigado.' });
       setNomeAvaliacao(''); setTextoAvaliacao(''); setNotaAvaliacao(5);
-      fetchAvaliacoes();
+      fetchAvaliacoes(); 
     } catch (error) {
       setMensagemAvaliacao({ tipo: 'danger', texto: 'Erro ao enviar. Tente novamente.' });
     } finally {
@@ -64,18 +61,29 @@ export default function ProductDetails() {
   if (loading) return <div className="text-center py-5"><Spinner animation="border" /></div>;
   if (!product) return <div className="text-center py-5">Produto não encontrado.</div>;
 
-  const handleBuyNow = () => {
-    const refText = product.codigo_final ? ` (Ref: ${product.codigo_final})` : '';
-    const text = `Olá! Gostei do *${product.nome}*${refText} - R$ ${product.preco.toFixed(2).replace('.', ',')} que vi no site e gostaria de comprar.`;
-    window.open(`https://wa.me/5564992641367?text=${encodeURIComponent(text)}`, '_blank');
-  };
-
+  const isAnel = product.categoria === 'aneis';
   const disponivel = product.em_estoque !== false;
+  const podeComprar = disponivel && (!isAnel || tamanhoSelecionado !== ''); 
+  
   const isOnPromo = product.preco_antigo && product.preco < product.preco_antigo;
   const formatPrice = (price) => price.toFixed(2).replace('.', ',');
   const galeria = [product.imagem_url, product.imagem_url_2, product.imagem_url_3, product.imagem_url_4].filter(url => url != null && url !== "");
-
   const mediaEstrelas = avaliacoes.length > 0 ? (avaliacoes.reduce((acc, curr) => acc + curr.nota, 0) / avaliacoes.length).toFixed(1) : 0;
+
+  const handleBuyNow = () => {
+    const refText = product.codigo_final ? ` (Ref: ${product.codigo_final})` : '';
+    const tamText = isAnel ? ` [Tamanho: ${tamanhoSelecionado}]` : '';
+    const text = `Olá! Gostei do *${product.nome}*${tamText}${refText} - R$ ${product.preco.toFixed(2).replace('.', ',')} que vi no site e gostaria de comprar.`;
+    window.open(`https://wa.me/5564992641367?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleAddToCart = () => {
+    const produtoParaSacola = isAnel 
+      ? { ...product, id: `${product.id}-TAM${tamanhoSelecionado}`, nome: `${product.nome} (Tam: ${tamanhoSelecionado})` }
+      : product;
+      
+    addToCart(produtoParaSacola);
+  };
 
   return (
     <Container className="py-5" style={{ maxWidth: '1000px' }}>
@@ -113,7 +121,7 @@ export default function ProductDetails() {
           </div>
           
           <h1 className="display-6 mb-2" style={{fontFamily: 'Playfair Display', fontWeight: '600'}}>{product.nome}</h1>
-
+          
           <div className="d-flex align-items-center gap-2 mb-3">
             <div className="d-flex" style={{ color: '#ffc107', fontSize: '1.1rem' }}>
               {[...Array(5)].map((_, i) => (
@@ -142,17 +150,59 @@ export default function ProductDetails() {
             )}
           </div>
 
-          <p className="text-muted mb-5" style={{lineHeight: '1.8', fontSize: '1rem'}}>
+          <p className="text-muted mb-4" style={{lineHeight: '1.8', fontSize: '1rem'}}>
             {product.descricao || "Uma peça exclusiva da coleção Floressia Pratas. Acabamento impecável e design sofisticado."}
           </p>
 
-          <div className="d-grid gap-3 d-md-flex">
-            <Button variant={disponivel ? "dark" : "secondary"} size="lg" className="px-5 rounded-0 text-uppercase letter-spacing-1" style={{ fontSize: '0.9rem' }} onClick={() => disponivel && addToCart(product)} disabled={!disponivel}>
+          {/* --- OPÇÕES DE TAMANHO (APARECE SÓ SE FOR ANEL) --- */}
+          {isAnel && disponivel && (
+            <div className="mb-4 bg-light p-3 border border-secondary-subtle">
+              <h6 className="fw-bold text-uppercase small letter-spacing-1 mb-3">Selecione o Tamanho:</h6>
+              <div className="d-flex gap-3">
+                <Button 
+                  variant={tamanhoSelecionado === '16' ? 'dark' : 'outline-dark'} 
+                  className="rounded-0 px-4 py-2 fw-bold"
+                  onClick={() => setTamanhoSelecionado('16')}
+                >
+                  TAM 16
+                </Button>
+                <Button 
+                  variant={tamanhoSelecionado === '18' ? 'dark' : 'outline-dark'} 
+                  className="rounded-0 px-4 py-2 fw-bold"
+                  onClick={() => setTamanhoSelecionado('18')}
+                >
+                  TAM 18
+                </Button>
+              </div>
+              {!tamanhoSelecionado && (
+                <small className="text-danger mt-2 d-block">
+                  * Selecione o aro do seu anel para habilitar a compra.
+                </small>
+              )}
+            </div>
+          )}
+
+          <div className="d-grid gap-3 d-md-flex mt-4">
+            <Button 
+              variant={disponivel ? "dark" : "secondary"} 
+              size="lg" 
+              className="px-5 rounded-0 text-uppercase letter-spacing-1" 
+              style={{ fontSize: '0.9rem' }} 
+              onClick={handleAddToCart} 
+              disabled={!podeComprar}
+            >
               <FaShoppingCart className="me-2" /> {disponivel ? 'Por na Sacola' : 'Esgotado'}
             </Button>
             
             {disponivel && (
-              <Button variant="outline-success" size="lg" className="px-4 rounded-0 text-uppercase letter-spacing-1" style={{ fontSize: '0.9rem' }} onClick={handleBuyNow}>
+              <Button 
+                variant="outline-success" 
+                size="lg" 
+                className="px-4 rounded-0 text-uppercase letter-spacing-1" 
+                style={{ fontSize: '0.9rem' }} 
+                onClick={handleBuyNow}
+                disabled={!podeComprar}
+              >
                 <FaWhatsapp className="me-2" /> Comprar Agora
               </Button>
             )}
@@ -160,10 +210,10 @@ export default function ProductDetails() {
         </Col>
       </Row>
 
+      {/* --- SEÇÃO DE AVALIAÇÕES --- */}
       <Row className="mt-5">
         <Col md={7} className="mb-5 pe-md-5">
           <h3 style={{fontFamily: 'Playfair Display'}} className="mb-4">Avaliações de Clientes</h3>
-          
           {avaliacoes.length === 0 ? (
             <div className="p-4 bg-light text-center border">
               <p className="text-muted mb-0">Nenhuma avaliação ainda. Que tal compartilhar sua experiência após a compra?</p>
@@ -191,7 +241,6 @@ export default function ProductDetails() {
         <Col md={5}>
           <div className="bg-light p-4 border border-secondary-subtle">
             <h5 style={{fontFamily: 'Playfair Display'}} className="mb-3">Deixe sua Avaliação</h5>
-            
             {mensagemAvaliacao && <Alert variant={mensagemAvaliacao.tipo} className="rounded-0 border-0">{mensagemAvaliacao.texto}</Alert>}
 
             <Form onSubmit={handleEnviarAvaliacao}>
@@ -232,7 +281,6 @@ export default function ProductDetails() {
           </div>
         </Col>
       </Row>
-
     </Container>
   );
 }

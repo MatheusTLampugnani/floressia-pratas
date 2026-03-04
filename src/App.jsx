@@ -229,7 +229,7 @@ function Store() {
       <div className="bg-light py-2 mb-0 border-bottom">
         <Container>
           <div className="category-scroll d-flex justify-content-md-center gap-2 pb-2 pb-md-0">
-             {['todos', 'aneis', 'colares', 'brincos', 'pulseiras'].map(cat => (
+             {['todos', 'aneis', 'colares', 'brincos', 'pulseiras', 'pingentes'].map(cat => (
                <Button 
                  key={cat}
                  variant={filtro === cat ? 'dark' : 'outline-dark'} 
