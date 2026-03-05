@@ -9,6 +9,7 @@ import ProductDetails from './pages/ProductDetails';
 import Login from './pages/Login';
 import Fornecedores from './pages/Fornecedores';
 import logoMarca from './assets/banner-floressia.png';
+import inauguracaoBanner from './assets/inauguracao-banner.png';
 
 // --- CARD DO PRODUTO ---
 function ProductCard({ product }) {
@@ -225,9 +226,21 @@ function Store() {
 
   return (
     <>
-      {/* MENU DE CATEGORIAS */}
       <div className="bg-light py-2 mb-0 border-bottom">
         <Container>
+        {/* BANNER  */}
+          <div className="w-100 mb-4 p-0">
+            <Link to="/colecao/todos" className="d-block">
+              <img 
+                src={inauguracaoBanner} 
+                alt="Grande Inauguração Floréssia Pratas" 
+                className="w-100"
+                style={{ display: 'block', objectFit: 'cover' }}
+              />
+            </Link>
+          </div>
+
+          {/* MENU DE CATEGORIAS */}
           <div className="category-scroll d-flex justify-content-md-center gap-2 pb-2 pb-md-0">
              {['todos', 'aneis', 'colares', 'brincos', 'pulseiras', 'pingentes'].map(cat => (
                <Button 
