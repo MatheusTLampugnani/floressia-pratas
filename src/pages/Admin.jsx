@@ -3,6 +3,7 @@ import { Container, Form, Button, Alert, Spinner, Table, Badge, Row, Col, Card }
 import { Link, useNavigate } from 'react-router-dom'; 
 import { FaEdit, FaTrash, FaArrowLeft, FaImage, FaSignOutAlt, FaPlus, FaBoxOpen } from 'react-icons/fa'; 
 import { supabase } from '../supabase';
+import imageCompression from 'browser-image-compression'; 
 
 export default function Admin() {
   const [loading, setLoading] = useState(false);
@@ -86,12 +87,33 @@ export default function Admin() {
 
   async function uploadImagem(arquivo) {
     if (!arquivo) return null;
-    const fileExt = arquivo.name.split('.').pop();
-    const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-    const { error } = await supabase.storage.from('produtos').upload(fileName, arquivo);
-    if (error) throw error;
-    const { data } = supabase.storage.from('produtos').getPublicUrl(fileName);
-    return data.publicUrl;
+
+    try {
+      const options = {
+        maxSizeMB: 0.3,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true
+      };
+
+      console.log(`Comprimindo imagem... Tamanho original: ${(arquivo.size / 1024 / 1024).toFixed(2)} MB`);
+      const compressedFile = await imageCompression(arquivo, options);
+      console.log(`Imagem comprimida! Novo tamanho: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+
+      const fileExt = compressedFile.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      
+      const { error } = await supabase.storage.from('produtos').upload(fileName, compressedFile, {
+        cacheControl: '31536000',
+        upsert: false
+      });
+      
+      const { data } = supabase.storage.from('produtos').getPublicUrl(fileName);
+      return data.publicUrl;
+
+    } catch (error) {
+      console.error("Erro na compressão/upload da imagem:", error);
+      throw error; 
+    }
   }
 
   async function handleSalvar(e) {
@@ -216,7 +238,7 @@ export default function Admin() {
                 </Col>
               </Row>
 
-              {/* --- LINHA DE CÓDIGO DO PRODUTO (NOVO) --- */}
+              {/* --- LINHA DE CÓDIGO DO PRODUTO --- */}
               <div className="bg-light p-3 border border-secondary-subtle mb-4">
                 <Row className="gy-3 align-items-center">
                   <Col md={4}>
@@ -262,7 +284,7 @@ export default function Admin() {
               {/* GALERIA DE FOTOS */}
               <div className="mb-5">
                 <h6 className="mb-3 fw-bold text-dark d-flex align-items-center gap-2" style={{fontFamily: 'Playfair Display'}}>
-                  <FaImage className="text-muted"/> Galeria de Imagens
+                  <FaImage className="text-muted"/> Galeria de Imagens <Badge bg="success" className="ms-2 fw-normal" style={{fontSize: '0.65rem'}}>Compressão Automática</Badge>
                   {editingId && <span className="ms-auto text-muted small fw-normal font-sans">Só preencha se for alterar a foto</span>}
                 </h6>
                 <Row className="gy-3">

@@ -33,6 +33,7 @@ function ProductCard({ product }) {
               variant="top" 
               src={product.imagem_url || "https://placehold.co/300"} 
               className="product-img rounded-0"
+              loading="lazy"
               style={{ objectFit: 'cover', width: '100%', aspectRatio: '1/1', transition: 'transform 0.4s ease' }} 
             />
           </div>
