@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Link, Outlet, useParams, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Outlet, useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge, Spinner } from 'react-bootstrap';
-import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft } from 'react-icons/fa';
+import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft, FaUser } from 'react-icons/fa';
 import { supabase } from './supabase';
 import { CartProvider, useCart } from './context/CartContext';
 import Admin from './pages/Admin';
 import ProductDetails from './pages/ProductDetails';
 import Login from './pages/Login';
 import Fornecedores from './pages/Fornecedores';
+import MinhaConta from './pages/MinhaConta';
+import AdminPedidos from './pages/AdminPedidos';
 import logoMarca from './assets/banner-floressia.png';
 import inauguracaoBanner from './assets/inauguracao-banner.png';
 
@@ -84,17 +86,67 @@ function ProductCard({ product }) {
 function ShoppingCart() {
   const { showCart, setShowCart, cartItems, addToCart, decreaseQuantity, removeFromCart, cartTotal } = useCart();
   const PHONE_NUMBER = "5564992641367"; 
+  const navigate = useNavigate(); 
+  const [finalizando, setFinalizando] = useState(false); 
 
-  const checkoutWhatsApp = () => {
+  const checkoutStore = async () => {
     if (cartItems.length === 0) return;
-    let message = "*Olá! Gostaria de finalizar meu pedido na Floréssia:*\n\n";
-    cartItems.forEach(item => {
-      message += `• ${item.quantity}x ${item.nome}\n   (R$ ${(item.preco * item.quantity).toFixed(2)})\n`;
-    });
-    message += `\n*Valor Total: R$ ${cartTotal.toFixed(2)}*`;
-    message += "\n\nAguardo instruções para pagamento e entrega.";
-    const url = `https://wa.me/${PHONE_NUMBER}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+    setFinalizando(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        alert('Por favor, acesse sua conta ou faça um cadastro rápido para finalizarmos seu pedido!');
+        setShowCart(false);
+        navigate('/minha-conta');
+        return;
+      }
+
+      const userId = session.user.id;
+
+      const { data: pedidoData, error: pedidoError } = await supabase
+        .from('pedidos')
+        .insert([{ user_id: userId, total: cartTotal }])
+        .select()
+        .single();
+
+      if (pedidoError) throw pedidoError;
+      const pedidoId = pedidoData.id;
+
+      const itensParaInserir = cartItems.map(item => {
+        const idReal = item.id.toString().split('-')[0];
+        
+        return {
+          pedido_id: pedidoId,
+          produto_id: isNaN(idReal) ? null : parseInt(idReal),
+          nome_produto: item.nome,
+          preco_unitario: item.preco,
+          quantidade: item.quantity,
+          tamanho: item.nome.includes('Tam:') ? item.nome.split('Tam: ')[1].replace(')', '') : null
+        };
+      });
+
+      const { error: itensError } = await supabase.from('itens_pedido').insert(itensParaInserir);
+      if (itensError) throw itensError;
+
+      let message = `*Olá! Acabei de fazer o Pedido #${pedidoId} no site da Floréssia:*\n\n`;
+      cartItems.forEach(item => {
+        message += `• ${item.quantity}x ${item.nome}\n`;
+      });
+      message += `\n*Valor Total: R$ ${cartTotal.toFixed(2).replace('.', ',')}*`;
+      message += "\n\nAguardo instruções para pagamento e informações sobre o envio.";
+      
+      const url = `https://wa.me/${PHONE_NUMBER}?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank');
+      setShowCart(false);
+
+    } catch (error) {
+      console.error("Erro ao gerar pedido:", error);
+      alert('Tivemos um problema ao processar seu pedido. Tente novamente.');
+    } finally {
+      setFinalizando(false);
+    }
   };
 
   return (
@@ -154,8 +206,16 @@ function ShoppingCart() {
                 </h3>
               </div>
               <small className="d-block text-muted mb-3 text-center">Frete e descontos calculados no WhatsApp</small>
-              <Button variant="success" size="lg" className="w-100 rounded-0 d-flex align-items-center justify-content-center gap-2 text-white fw-bold py-3" onClick={checkoutWhatsApp} style={{ background: '#25D366', borderColor: '#25D366' }}>
-                <FaWhatsapp size={24} /> FINALIZAR PEDIDO
+              
+              <Button 
+                variant="success" 
+                size="lg" 
+                className="w-100 rounded-0 d-flex align-items-center justify-content-center gap-2 text-white fw-bold py-3" 
+                onClick={checkoutStore} 
+                disabled={finalizando}
+                style={{ background: '#25D366', borderColor: '#25D366' }}
+              >
+                {finalizando ? <Spinner size="sm" animation="border" /> : <><FaWhatsapp size={24} /> FINALIZAR PEDIDO</>}
               </Button>
             </div>
           </>
@@ -167,7 +227,9 @@ function ShoppingCart() {
 
 // --- CABEÇALHO ---
 function Header() {
-  const { setShowCart, cartItems } = useCart();
+  const { setShowCart, cartItems, cart } = useCart();
+  const cartSize = cartItems ? cartItems.length : 0;
+
   return (
     <Navbar bg="white" expand="lg" className="shadow-sm sticky-top py-2">
       <Container className="position-relative">
@@ -180,21 +242,30 @@ function Header() {
           />
         </Navbar.Brand>
         <Nav className="position-absolute end-0 pe-3 top-50 translate-middle-y">
-          <Button variant="outline-dark" onClick={() => setShowCart(true)} className="position-relative border-0 p-2 d-flex align-items-center justify-content-center bg-light rounded-circle" style={{ width: '40px', height: '40px' }}>
-            <FaShoppingCart size={18} />
-            {cartItems.length > 0 && (
-              <Badge bg="dark" className="position-absolute top-0 start-100 translate-middle rounded-circle" style={{ fontSize: '0.65rem' }}>
-                {cartItems.length}
-              </Badge>
-            )}
-          </Button>
+          <div className="d-flex align-items-center gap-4">
+            
+            <Link to="/minha-conta" className="text-dark d-flex align-items-center gap-2 text-decoration-none" title="Minha Conta">
+              <FaUser className="fs-5" />
+              <span className="d-none d-md-block small fw-bold text-uppercase letter-spacing-1">Entrar</span>
+            </Link>
+
+            <Button variant="link" className="text-dark position-relative p-0 border-0" onClick={() => setShowCart(true)}>
+              <FaShoppingCart className="fs-5" />
+              {cartSize > 0 && (
+                <Badge bg="dark" className="position-absolute top-0 start-100 translate-middle rounded-circle" style={{fontSize: '0.6rem'}}>
+                  {cartSize}
+                </Badge>
+              )}
+            </Button>
+
+          </div>
         </Nav>
       </Container>
     </Navbar>
   );
 }
 
-// --- PÁGINA INICIAL (VITRINE) ---
+// --- PÁGINA INICIAL ---
 function Store() {
   const [products, setProducts] = useState([]);
   const [filtro, setFiltro] = useState('todos');
@@ -259,7 +330,7 @@ function Store() {
         </Container>
       </div>
 
-      {/* BARRA DE BENEFÍCIOS (Estilo Premium) */}
+      {/* BARRA DE BENEFÍCIOS */}
       <div className="bg-light py-4 mb-5">
         <Container>
           <Row className="gy-4 justify-content-center">
@@ -553,6 +624,7 @@ export default function App() {
           <Route element={<StoreLayout />}>
             <Route path="/" element={<Store />} />
             <Route path="/produto/:id" element={<ProductDetails />} />
+            <Route path="/minha-conta" element={<MinhaConta />} />
             <Route path="/colecao/:tipo" element={<CollectionPage />} />
           </Route>
           <Route path="/login" element={<Login />} />
@@ -564,6 +636,11 @@ export default function App() {
           <Route path="/admin/fornecedores" element={
             <RotaProtegida>
               <Fornecedores />
+            </RotaProtegida>
+          } />
+          <Route path="/admin/pedidos" element={
+            <RotaProtegida>
+              <AdminPedidos />
             </RotaProtegida>
           } />
         </Routes>

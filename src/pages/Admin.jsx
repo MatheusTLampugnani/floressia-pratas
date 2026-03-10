@@ -181,17 +181,21 @@ export default function Admin() {
 
   return (
     <div style={{ backgroundColor: '#fafafa', minHeight: '100vh', paddingBottom: '4rem' }}>
-      
       <div className="bg-white border-bottom shadow-sm py-3 mb-5">
         <Container className="d-flex justify-content-between align-items-center">
           <Link to="/" className="text-decoration-none text-dark d-flex align-items-center fw-bold" style={{fontFamily: 'Playfair Display', fontSize: '1.2rem'}}>
             <FaArrowLeft className="me-2 fs-6 text-muted" /> Vitrine
           </Link>
           <div className="d-flex align-items-center gap-3">
+            {/* BOTÃO PARA TELA DE PEDIDOS */}
+            <Button as={Link} to="/admin/pedidos" variant="outline-dark" size="sm" className="d-flex align-items-center gap-2 rounded-0">
+              <FaBoxOpen /> Pedidos
+            </Button>
             {/* BOTÃO PARA TELA DE FORNECEDORES */}
             <Button as={Link} to="/admin/fornecedores" variant="outline-primary" size="sm" className="d-flex align-items-center gap-2 rounded-0">
               <FaBoxOpen /> Fornecedores
             </Button>
+            {/* BOTÃO DE SAIR */}
             <Button variant="outline-dark" size="sm" className="d-flex align-items-center gap-2 rounded-0 border-0" onClick={handleLogout}>
               <FaSignOutAlt /> Sair
             </Button>
@@ -284,7 +288,7 @@ export default function Admin() {
               {/* GALERIA DE FOTOS */}
               <div className="mb-5">
                 <h6 className="mb-3 fw-bold text-dark d-flex align-items-center gap-2" style={{fontFamily: 'Playfair Display'}}>
-                  <FaImage className="text-muted"/> Galeria de Imagens <Badge bg="success" className="ms-2 fw-normal" style={{fontSize: '0.65rem'}}>Compressão Automática</Badge>
+                  <FaImage className="text-muted"/> Galeria de Imagens
                   {editingId && <span className="ms-auto text-muted small fw-normal font-sans">Só preencha se for alterar a foto</span>}
                 </h6>
                 <Row className="gy-3">
