@@ -1,31 +1,29 @@
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Card, Alert, Spinner, Badge, Table, Tabs, Tab } from 'react-bootstrap';
-import { FaUser, FaBoxOpen, FaSignOutAlt, FaMapMarkerAlt, FaTruck, FaPlus, FaTrash } from 'react-icons/fa';
+import { Container, Row, Col, Form, Button, Card, Alert, Spinner, Badge, Table, Tabs, Tab, Modal } from 'react-bootstrap';
+import { FaUser, FaBoxOpen, FaSignOutAlt, FaMapMarkerAlt, FaTruck, FaPlus, FaTrash, FaHeart, FaEye, FaFileInvoiceDollar, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import { supabase } from '../supabase';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 
 export default function MinhaConta() {
   const navigate = useNavigate();
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [nomeCadastro, setNomeCadastro] = useState('');
-  const [authMsg, setAuthMsg] = useState(null);
-  const [authLoading, setAuthLoading] = useState(false);
-
   const [perfil, setPerfil] = useState(null);
   const [enderecos, setEnderecos] = useState([]);
   const [salvandoPerfil, setSalvandoPerfil] = useState(false);
   const [perfilMsg, setPerfilMsg] = useState(null);
-
+  
   const [modoAddEndereco, setModoAddEndereco] = useState(false);
   const [novoEndereco, setNovoEndereco] = useState({ titulo: '', cep: '', endereco: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '' });
   const [salvandoEndereco, setSalvandoEndereco] = useState(false);
-
+  
   const [pedidos, setPedidos] = useState([]);
+  const [favoritos, setFavoritos] = useState([]);
+
+  const [showModalPedido, setShowModalPedido] = useState(false);
+  const [pedidoSelecionado, setPedidoSelecionado] = useState(null);
+  const [itensPedido, setItensPedido] = useState([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -54,35 +52,15 @@ export default function MinhaConta() {
 
     const { data: pedidosData } = await supabase.from('pedidos').select('*').eq('user_id', userId).order('created_at', { ascending: false });
     if (pedidosData) setPedidos(pedidosData);
+
+    const { data: favData } = await supabase
+      .from('favoritos')
+      .select('*, produtos(*)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (favData) setFavoritos(favData);
     
     setLoading(false);
-  }
-
-  // --- FUNÇÕES DE AUTENTICAÇÃO ---
-  async function handleAuth(e) {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthMsg(null);
-
-    try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.auth.signUp({ 
-          email, 
-          password,
-          options: { data: { nome: nomeCadastro } } 
-        });
-        if (error) throw error;
-        setAuthMsg({ tipo: 'success', texto: 'Conta criada! Faça login para continuar.' });
-        setIsLogin(true);
-      }
-    } catch (error) {
-      setAuthMsg({ tipo: 'danger', texto: error.message.includes('Invalid login') ? 'E-mail ou senha incorretos.' : 'Erro ao processar. Tente novamente.' });
-    } finally {
-      setAuthLoading(false);
-    }
   }
 
   async function handleLogout() {
@@ -112,7 +90,7 @@ export default function MinhaConta() {
     }
   }
 
-  // --- API DE CEP ---
+  // --- API DE CEP (ViaCEP) ---
   async function buscarCep(cepDigitado) {
     const cepLimpo = cepDigitado.replace(/\D/g, '');
     if (cepLimpo.length === 8) {
@@ -161,49 +139,44 @@ export default function MinhaConta() {
     }
   }
 
-  if (loading) return <div className="text-center py-5 my-5"><Spinner animation="border" /></div>;
-
-  // TELA DE LOGIN / CADASTRO
-  if (!session) {
-    return (
-      <Container className="py-5" style={{ maxWidth: '500px' }}>
-        <div className="text-center mb-4">
-          <h2 style={{fontFamily: 'Playfair Display'}}>{isLogin ? 'Acesse sua Conta' : 'Criar Nova Conta'}</h2>
-          <p className="text-muted">{isLogin ? 'Acompanhe seus pedidos e gerencie seus endereços.' : 'Junte-se a nós e brilhe com a Floréssia Pratas.'}</p>
-        </div>
-
-        <Card className="border-0 shadow-sm rounded-0 p-4">
-          {authMsg && <Alert variant={authMsg.tipo} className="rounded-0">{authMsg.texto}</Alert>}
-          <Form onSubmit={handleAuth}>
-            {!isLogin && (
-              <Form.Group className="mb-3">
-                <Form.Label className="small fw-bold">Nome Completo</Form.Label>
-                <Form.Control type="text" className="rounded-0" required value={nomeCadastro} onChange={e => setNomeCadastro(e.target.value)} />
-              </Form.Group>
-            )}
-            <Form.Group className="mb-3">
-              <Form.Label className="small fw-bold">E-mail</Form.Label>
-              <Form.Control type="email" className="rounded-0" required value={email} onChange={e => setEmail(e.target.value)} />
-            </Form.Group>
-            <Form.Group className="mb-4">
-              <Form.Label className="small fw-bold">Senha</Form.Label>
-              <Form.Control type="password" className="rounded-0" required value={password} onChange={e => setPassword(e.target.value)} minLength={6} />
-            </Form.Group>
-            <Button variant="dark" type="submit" className="w-100 rounded-0 py-2 text-uppercase letter-spacing-1 mb-3" disabled={authLoading}>
-              {authLoading ? <Spinner size="sm" animation="border" /> : (isLogin ? 'Entrar' : 'Cadastrar')}
-            </Button>
-            <div className="text-center">
-              <Button variant="link" className="text-muted text-decoration-none small" onClick={() => setIsLogin(!isLogin)}>
-                {isLogin ? 'Não tem conta? Crie uma aqui.' : 'Já tem conta? Faça login.'}
-              </Button>
-            </div>
-          </Form>
-        </Card>
-      </Container>
-    );
+  // --- REMOVER FAVORITO ---
+  async function removerFavorito(produtoId) {
+    try {
+      await supabase.from('favoritos').delete().eq('user_id', session.user.id).eq('produto_id', produtoId);
+      setFavoritos(prev => prev.filter(fav => fav.produto_id !== produtoId));
+    } catch (error) {
+      console.error("Erro ao remover favorito:", error);
+    }
   }
 
-  // TELA DA CONTA DO CLIENTE LOGADO
+  // --- FUNÇÕES DO MODAL DE PEDIDO ---
+  async function abrirDetalhesPedido(pedido) {
+    setPedidoSelecionado(pedido);
+    setShowModalPedido(true);
+    
+    const { data } = await supabase.from('itens_pedido').select('*').eq('pedido_id', pedido.id);
+    if (data) setItensPedido(data);
+  }
+
+  const statusLista = ['Aguardando Pagamento', 'Pagamento Confirmado', 'Em Separação', 'Enviado', 'Entregue'];
+  const stepIndex = pedidoSelecionado ? statusLista.indexOf(pedidoSelecionado.status) : 0;
+  const isCancelado = pedidoSelecionado?.status === 'Cancelado';
+
+  const iconesTimeline = [
+    { label: 'Aguardando', icon: <FaFileInvoiceDollar /> },
+    { label: 'Confirmado', icon: <FaCheckCircle /> },
+    { label: 'Separando', icon: <FaBoxOpen /> },
+    { label: 'Enviado', icon: <FaTruck /> },
+    { label: 'Entregue', icon: <FaMapMarkerAlt /> }
+  ];
+
+  if (loading) return <div className="text-center py-5 my-5"><Spinner animation="border" /></div>;
+
+  if (!session) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // TELA DA CONTA DO CLIENTE
   return (
     <Container className="py-5" style={{ maxWidth: '900px' }}>
       <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
@@ -223,8 +196,8 @@ export default function MinhaConta() {
 
       <Tabs defaultActiveKey="pedidos" className="mb-4 custom-tabs">
         
-        {/* MEUS PEDIDOS */}
-        <Tab eventKey="pedidos" title={<><FaBoxOpen className="me-2"/> Meus Pedidos</>}>
+        {/* ABA: MEUS PEDIDOS */}
+        <Tab eventKey="pedidos" title={<><FaBoxOpen className="me-2"/> Pedidos</>}>
           <Card className="border-0 shadow-sm rounded-0 p-4">
             {pedidos.length === 0 ? (
               <div className="text-center py-5">
@@ -240,7 +213,7 @@ export default function MinhaConta() {
                     <th>Data</th>
                     <th>Total</th>
                     <th>Status</th>
-                    <th>Rastreio</th>
+                    <th>Ação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -251,20 +224,16 @@ export default function MinhaConta() {
                       <td>R$ {pedido.total.toFixed(2).replace('.', ',')}</td>
                       <td>
                         <Badge bg={
-                          pedido.status === 'Enviado' ? 'success' : 
-                          pedido.status === 'Em Produção' ? 'warning' : 'secondary'
-                        } className="rounded-pill px-3 py-2 fw-normal">
+                          pedido.status === 'Cancelado' ? 'danger' : 
+                          pedido.status === 'Entregue' ? 'success' : 'dark'
+                        } className="rounded-0 fw-normal py-1 px-2">
                           {pedido.status}
                         </Badge>
                       </td>
                       <td>
-                        {pedido.codigo_rastreio ? (
-                          <div className="d-flex align-items-center gap-2 text-primary fw-bold font-monospace">
-                            <FaTruck /> {pedido.codigo_rastreio}
-                          </div>
-                        ) : (
-                          <span className="text-muted small">Aguardando envio</span>
-                        )}
+                        <Button variant="outline-dark" size="sm" className="rounded-0 d-flex align-items-center gap-2" onClick={() => abrirDetalhesPedido(pedido)}>
+                          <FaEye /> Detalhes
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -274,8 +243,56 @@ export default function MinhaConta() {
           </Card>
         </Tab>
 
-        {/* MEUS DADOS E ENDEREÇOS */}
-        <Tab eventKey="dados" title={<><FaUser className="me-2"/> Meus Dados</>}>
+        {/* ABA: MEUS FAVORITOS */}
+        <Tab eventKey="favoritos" title={<><FaHeart className="me-2"/> Favoritos</>}>
+          <Card className="border-0 shadow-sm rounded-0 p-4">
+            {favoritos.length === 0 ? (
+              <div className="text-center py-5">
+                <FaHeart size={40} className="text-muted mb-3 opacity-25" />
+                <h5 className="text-muted">Sua lista de desejos está vazia.</h5>
+                <p className="small text-secondary mb-4">Que tal dar uma olhadinha nas nossas peças?</p>
+                <Button as={Link} to="/" variant="dark" className="rounded-0 px-4">Explorar a Loja</Button>
+              </div>
+            ) : (
+              <Row className="g-3 g-md-4">
+                {favoritos.map(fav => (
+                  <Col xs={6} md={3} key={fav.id}>
+                    <Card className="h-100 shadow-sm border-0 position-relative rounded-0">
+                      <button 
+                        onClick={() => removerFavorito(fav.produto_id)}
+                        className="btn btn-link position-absolute top-0 end-0 m-2 z-1 p-1 text-decoration-none shadow-none"
+                        style={{ color: '#dc3545', backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}
+                        title="Remover dos favoritos"
+                      >
+                        <FaHeart size={18} />
+                      </button>
+
+                      <Link to={`/produto/${fav.produto_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <Card.Img 
+                          variant="top" 
+                          src={fav.produtos?.imagem_url || "https://placehold.co/300"} 
+                          className="rounded-0" 
+                          style={{ objectFit: 'cover', aspectRatio: '1/1' }} 
+                        />
+                        <Card.Body className="p-2 text-center">
+                          <Card.Title className="text-truncate fs-6 mb-1" style={{fontFamily: 'Playfair Display'}}>
+                            {fav.produtos?.nome}
+                          </Card.Title>
+                          <div className="fw-bold text-dark" style={{fontSize: '0.9rem'}}>
+                            R$ {fav.produtos?.preco?.toFixed(2).replace('.', ',')}
+                          </div>
+                        </Card.Body>
+                      </Link>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            )}
+          </Card>
+        </Tab>
+
+        {/* ABA: MEUS DADOS E ENDEREÇOS */}
+        <Tab eventKey="dados" title={<><FaUser className="me-2"/> Configurações</>}>
           <Card className="border-0 shadow-sm rounded-0 p-4 mb-4">
             <h5 className="mb-4 fw-bold">Informações Pessoais</h5>
             {perfilMsg && <Alert variant={perfilMsg.tipo} className="rounded-0">{perfilMsg.texto}</Alert>}
@@ -407,6 +424,76 @@ export default function MinhaConta() {
           </Card>
         </Tab>
       </Tabs>
+
+      {/* MODAL DE DETALHE DO PEDIDO*/}
+      <Modal show={showModalPedido} onHide={() => setShowModalPedido(false)} centered size="lg">
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title style={{fontFamily: 'Playfair Display'}} className="fw-bold">
+            Detalhes do Pedido <span className="text-muted">#{pedidoSelecionado?.id}</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2 px-4 pb-4">
+          
+          {/* LINHA DO TEMPO (STATUS) */}
+          <div className="bg-light p-4 mb-4 border border-secondary-subtle">
+            <h6 className="text-uppercase small fw-bold text-muted mb-4 letter-spacing-1 text-center">Status de Entrega</h6>
+            
+            {isCancelado ? (
+              <div className="text-center text-danger py-3">
+                <FaTimesCircle size={40} className="mb-2" />
+                <h5 className="fw-bold">Pedido Cancelado</h5>
+                <p className="small mb-0">Este pedido foi cancelado e não será entregue.</p>
+              </div>
+            ) : (
+              <div className="position-relative d-flex justify-content-between text-center mx-auto" style={{maxWidth: '500px'}}>
+                <div className="position-absolute top-50 start-0 w-100 border-top border-2 border-secondary-subtle" style={{ zIndex: 0, transform: 'translateY(-50%)' }}></div>
+                <div className="position-absolute top-50 start-0 border-top border-2 border-dark" style={{ zIndex: 0, transform: 'translateY(-50%)', width: `${(stepIndex / 4) * 100}%`, transition: 'width 0.5s ease-in-out' }}></div>
+                {iconesTimeline.map((step, idx) => (
+                  <div key={idx} className="position-relative bg-light px-2" style={{ zIndex: 1 }}>
+                    <div className={`rounded-circle d-flex align-items-center justify-content-center border border-2 mx-auto mb-2 transition-all ${idx <= stepIndex ? 'border-dark bg-dark text-white' : 'border-secondary-subtle bg-white text-muted'}`} style={{ width: '35px', height: '35px' }}>
+                      {step.icon}
+                    </div>
+                    <div className={`small fw-bold d-none d-md-block ${idx <= stepIndex ? 'text-dark' : 'text-muted'}`} style={{fontSize: '0.7rem', maxWidth: '70px', lineHeight: '1.2'}}>
+                      {step.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Rastreio */}
+            {pedidoSelecionado?.codigo_rastreio && !isCancelado && (
+              <div className="text-center mt-4 pt-3 border-top">
+                <span className="small text-muted me-2">Código de Rastreio:</span>
+                <Badge bg="dark" className="fs-6 py-2 px-3 font-monospace letter-spacing-1">{pedidoSelecionado.codigo_rastreio}</Badge>
+              </div>
+            )}
+          </div>
+
+          {/* LISTA DE ITENS */}
+          <h6 className="text-uppercase small fw-bold text-muted mb-3 letter-spacing-1">Itens Comprados</h6>
+          <div className="border border-secondary-subtle">
+            <ul className="list-group list-group-flush">
+              {itensPedido.map(item => (
+                <li key={item.id} className="list-group-item d-flex justify-content-between align-items-center px-3 py-3">
+                  <div>
+                    <span className="fw-bold text-dark me-2">{item.quantidade}x</span> 
+                    <span className="text-dark">{item.nome_produto}</span>
+                    {item.tamanho && <Badge bg="secondary" className="ms-2 rounded-0">Tam: {item.tamanho}</Badge>}
+                  </div>
+                  <span className="text-muted fw-bold">R$ {(item.preco_unitario * item.quantidade).toFixed(2).replace('.', ',')}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="bg-light p-3 d-flex justify-content-between align-items-center border-top">
+              <span className="text-uppercase fw-bold text-muted small">Total do Pedido</span>
+              <h5 className="mb-0 fw-bold" style={{fontFamily: 'Playfair Display'}}>R$ {pedidoSelecionado?.total?.toFixed(2).replace('.', ',')}</h5>
+            </div>
+          </div>
+
+        </Modal.Body>
+      </Modal>
+
     </Container>
   );
 }

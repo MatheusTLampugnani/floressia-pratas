@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, Outlet, useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge, Spinner } from 'react-bootstrap';
-import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft, FaUser } from 'react-icons/fa';
+import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft, FaUser, FaHeart, FaRegHeart } from 'react-icons/fa';
 import { supabase } from './supabase';
 import { CartProvider, useCart } from './context/CartContext';
 import Admin from './pages/Admin';
@@ -19,6 +19,48 @@ function ProductCard({ product }) {
   const disponivel = product.em_estoque !== false;
   const isOnPromo = product.preco_antigo && product.preco < product.preco_antigo;
   const formatPrice = (price) => price.toFixed(2).replace('.', ',');
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  useEffect(() => {
+    verificarFavorito();
+  }, [product.id]);
+
+  async function verificarFavorito() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data } = await supabase
+      .from('favoritos')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('produto_id', product.id)
+      .single();
+
+    if (data) setIsFavorite(true);
+  }
+
+  async function toggleFavorite(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      alert('Faça login ou crie uma conta rapidinho para salvar seus favoritos!');
+      return;
+    }
+
+    try {
+      if (isFavorite) {
+        await supabase.from('favoritos').delete().eq('user_id', session.user.id).eq('produto_id', product.id);
+        setIsFavorite(false);
+      } else {
+        await supabase.from('favoritos').insert([{ user_id: session.user.id, produto_id: product.id }]);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error("Erro ao favoritar", error);
+    }
+  }
   
   return (
     <Col xs={6} md={4} lg={3} className="mb-4 px-2 px-md-3">
@@ -28,6 +70,15 @@ function ProductCard({ product }) {
             PROMO
           </Badge>
         )}
+
+        <button 
+          onClick={toggleFavorite}
+          className="btn btn-link position-absolute top-0 end-0 m-2 z-1 p-1 text-decoration-none shadow-none"
+          style={{ color: isFavorite ? '#dc3545' : '#6c757d', backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}
+          title={isFavorite ? "Remover dos favoritos" : "Salvar nos favoritos"}
+        >
+          {isFavorite ? <FaHeart size={18} /> : <FaRegHeart size={18} />}
+        </button>
 
         <Link to={`/produto/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="product-image-container" style={{ overflow: 'hidden', cursor: 'pointer', opacity: disponivel ? 1 : 0.6, backgroundColor: '#f8f9fa' }}>
@@ -86,8 +137,33 @@ function ProductCard({ product }) {
 function ShoppingCart() {
   const { showCart, setShowCart, cartItems, addToCart, decreaseQuantity, removeFromCart, cartTotal } = useCart();
   const PHONE_NUMBER = "5564992641367"; 
+  
   const navigate = useNavigate(); 
   const [finalizando, setFinalizando] = useState(false); 
+
+  const [session, setSession] = useState(null);
+  const [enderecos, setEnderecos] = useState([]);
+  const [enderecoSelecionado, setEnderecoSelecionado] = useState('');
+
+  useEffect(() => {
+    if (showCart) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        if (session) buscarEnderecos(session.user.id);
+        else setEnderecos([]);
+      });
+    }
+  }, [showCart]);
+
+  async function buscarEnderecos(userId) {
+    const { data } = await supabase.from('enderecos').select('*').eq('user_id', userId).order('id', { ascending: false });
+    if (data && data.length > 0) {
+      setEnderecos(data);
+      setEnderecoSelecionado(data[0].id.toString());
+    } else {
+      setEnderecos([]);
+    }
+  }
 
   const checkoutStore = async () => {
     if (cartItems.length === 0) return;
@@ -95,19 +171,31 @@ function ShoppingCart() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session) {
-        alert('Por favor, acesse sua conta ou faça um cadastro rápido para finalizarmos seu pedido!');
+        alert('Por favor, acesse sua conta para finalizarmos seu pedido!');
+        setShowCart(false);
+        navigate('/login');
+        return;
+      }
+
+      if (enderecos.length === 0) {
+        alert('Por favor, cadastre um endereço de entrega na sua conta antes de finalizar a compra.');
         setShowCart(false);
         navigate('/minha-conta');
         return;
       }
 
       const userId = session.user.id;
+      const endEscolhido = enderecos.find(e => e.id.toString() === enderecoSelecionado.toString());
+      const enderecoFormatado = `${endEscolhido.endereco}, Nº ${endEscolhido.numero} ${endEscolhido.complemento ? '('+endEscolhido.complemento+')' : ''} - Bairro: ${endEscolhido.bairro}, ${endEscolhido.cidade}/${endEscolhido.estado} - CEP: ${endEscolhido.cep}`;
 
       const { data: pedidoData, error: pedidoError } = await supabase
         .from('pedidos')
-        .insert([{ user_id: userId, total: cartTotal }])
+        .insert([{ 
+          user_id: userId, 
+          total: cartTotal,
+          endereco_entrega: enderecoFormatado
+        }])
         .select()
         .single();
 
@@ -116,7 +204,6 @@ function ShoppingCart() {
 
       const itensParaInserir = cartItems.map(item => {
         const idReal = item.id.toString().split('-')[0];
-        
         return {
           pedido_id: pedidoId,
           produto_id: isNaN(idReal) ? null : parseInt(idReal),
@@ -131,11 +218,10 @@ function ShoppingCart() {
       if (itensError) throw itensError;
 
       let message = `*Olá! Acabei de fazer o Pedido #${pedidoId} no site da Floréssia:*\n\n`;
-      cartItems.forEach(item => {
-        message += `• ${item.quantity}x ${item.nome}\n`;
-      });
+      cartItems.forEach(item => { message += `• ${item.quantity}x ${item.nome}\n`; });
       message += `\n*Valor Total: R$ ${cartTotal.toFixed(2).replace('.', ',')}*`;
-      message += "\n\nAguardo instruções para pagamento e informações sobre o envio.";
+      message += `\n*Entrega em:* ${endEscolhido.titulo} (${endEscolhido.cidade}/${endEscolhido.estado})`;
+      message += "\n\nAguardo instruções para pagamento e envio.";
       
       const url = `https://wa.me/${PHONE_NUMBER}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
@@ -176,22 +262,16 @@ function ShoppingCart() {
                   <div className="flex-grow-1 ms-3">
                     <div className="d-flex justify-content-between align-items-start">
                       <h6 className="mb-1 fw-bold text-truncate" style={{ maxWidth: '160px' }}>{item.nome}</h6>
-                      <button onClick={() => removeFromCart(item.id)} className="btn btn-link text-danger p-0 text-decoration-none">
-                        <FaTrash size={14} />
-                      </button>
+                      <button onClick={() => removeFromCart(item.id)} className="btn btn-link text-danger p-0 text-decoration-none"><FaTrash size={14} /></button>
                     </div>
-                    <p className="mb-2 text-muted small" style={{ fontSize: '0.85rem' }}>
-                      Unitário: R$ {item.preco.toFixed(2).replace('.', ',')}
-                    </p>
+                    <p className="mb-2 text-muted small" style={{ fontSize: '0.85rem' }}>Unitário: R$ {item.preco.toFixed(2).replace('.', ',')}</p>
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="d-flex align-items-center border rounded">
                         <button onClick={() => decreaseQuantity(item.id)} className="btn btn-sm px-2 py-0 border-end" style={{ height: '28px' }}>-</button>
                         <span className="px-3 small fw-bold">{item.quantity}</span>
                         <button onClick={() => addToCart(item)} className="btn btn-sm px-2 py-0 border-start" style={{ height: '28px' }}>+</button>
                       </div>
-                      <span className="fw-bold text-dark">
-                        R$ {(item.preco * item.quantity).toFixed(2).replace('.', ',')}
-                      </span>
+                      <span className="fw-bold text-dark">R$ {(item.preco * item.quantity).toFixed(2).replace('.', ',')}</span>
                     </div>
                   </div>
                 </div>
@@ -199,6 +279,32 @@ function ShoppingCart() {
             </div>
 
             <div className="bg-light p-4 border-top mt-auto">
+              
+              {/* NOVO: SELEÇÃO DE ENDEREÇO DE ENTREGA NA SACOLA */}
+              {session && (
+                <div className="mb-3">
+                  <small className="fw-bold text-dark d-block mb-1"><FaMapMarkerAlt className="text-muted me-1"/> Entregar em:</small>
+                  {enderecos.length > 0 ? (
+                    <Form.Select 
+                      size="sm" 
+                      className="rounded-0 border-secondary-subtle bg-white shadow-sm"
+                      value={enderecoSelecionado}
+                      onChange={e => setEnderecoSelecionado(e.target.value)}
+                    >
+                      {enderecos.map(end => (
+                        <option key={end.id} value={end.id}>
+                          {end.titulo} - {end.endereco}, {end.numero}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  ) : (
+                    <Button as={Link} to="/minha-conta" variant="outline-danger" size="sm" className="w-100 rounded-0" onClick={() => setShowCart(false)}>
+                      + Cadastrar Endereço de Entrega
+                    </Button>
+                  )}
+                </div>
+              )}
+
               <div className="d-flex justify-content-between align-items-end mb-3">
                 <span className="text-muted">Subtotal</span>
                 <h3 className="mb-0 fw-bold" style={{ fontFamily: 'Playfair Display' }}>
@@ -227,8 +333,33 @@ function ShoppingCart() {
 
 // --- CABEÇALHO ---
 function Header() {
-  const { setShowCart, cartItems, cart } = useCart();
+  const { setShowCart, cartItems } = useCart();
+  const [userName, setUserName] = useState(null);
+  
   const cartSize = cartItems ? cartItems.length : 0;
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) buscarNomeUsuario(session.user.id);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        buscarNomeUsuario(session.user.id);
+      } else {
+        setUserName(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function buscarNomeUsuario(userId) {
+    const { data } = await supabase.from('perfis').select('nome').eq('id', userId).single();
+    if (data && data.nome) {
+      setUserName(data.nome.split(' ')[0]);
+    }
+  }
 
   return (
     <Navbar bg="white" expand="lg" className="shadow-sm sticky-top py-2">
@@ -243,10 +374,11 @@ function Header() {
         </Navbar.Brand>
         <Nav className="position-absolute end-0 pe-3 top-50 translate-middle-y">
           <div className="d-flex align-items-center gap-4">
-            
             <Link to="/minha-conta" className="text-dark d-flex align-items-center gap-2 text-decoration-none" title="Minha Conta">
               <FaUser className="fs-5" />
-              <span className="d-none d-md-block small fw-bold text-uppercase letter-spacing-1">Entrar</span>
+              <span className="d-none d-md-block small fw-bold text-uppercase letter-spacing-1">
+                {userName ? `Olá, ${userName}` : 'Entrar'}
+              </span>
             </Link>
 
             <Button variant="link" className="text-dark position-relative p-0 border-0" onClick={() => setShowCart(true)}>

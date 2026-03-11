@@ -149,10 +149,17 @@ async function fetchPedidos() {
         </Modal.Header>
 
         <Modal.Body>
-          <h6 className="text-uppercase small fw-bold text-muted mb-2 letter-spacing-1">Endereço de Entrega:</h6>
+          <h6 className="text-uppercase small fw-bold text-muted mb-2 letter-spacing-1">📍 Endereço de Entrega:</h6>
           <div className="bg-light p-3 mb-4 border border-secondary-subtle">
             <div className="fw-bold text-dark mb-1">
               {pedidoSelecionado?.perfis?.nome} <span className="fw-normal text-muted ms-2">({pedidoSelecionado?.perfis?.telefone})</span>
+            </div>
+            <div className="text-muted small" style={{lineHeight: '1.6'}}>
+              {pedidoSelecionado?.endereco_entrega ? (
+                pedidoSelecionado.endereco_entrega
+              ) : (
+                <span className="text-danger">Endereço não registrado (Pedido antigo)</span>
+              )}
             </div>
             <div className="text-muted small" style={{lineHeight: '1.6'}}>
               {pedidoSelecionado?.perfis?.endereco}, Nº {pedidoSelecionado?.perfis?.numero} <br/>
