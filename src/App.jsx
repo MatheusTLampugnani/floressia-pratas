@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, Outlet, useParams, Navigate, useNavigate } from 'react-router-dom';
-import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge, Spinner } from 'react-bootstrap';
-import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft, FaUser, FaHeart, FaRegHeart } from 'react-icons/fa';
+import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge, Spinner, Alert, Form } from 'react-bootstrap';
+import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft, FaUser, FaHeart, FaRegHeart, FaMapMarkerAlt } from 'react-icons/fa';
 import { supabase } from './supabase';
 import { CartProvider, useCart } from './context/CartContext';
 import Admin from './pages/Admin';
@@ -34,7 +34,7 @@ function ProductCard({ product }) {
       .select('*')
       .eq('user_id', session.user.id)
       .eq('produto_id', product.id)
-      .single();
+      .maybeSingle();
 
     if (data) setIsFavorite(true);
   }
@@ -145,8 +145,11 @@ function ShoppingCart() {
   const [enderecos, setEnderecos] = useState([]);
   const [enderecoSelecionado, setEnderecoSelecionado] = useState('');
 
+  const [alerta, setAlerta] = useState(null);
+
   useEffect(() => {
     if (showCart) {
+      setAlerta(null);
       supabase.auth.getSession().then(({ data: { session } }) => {
         setSession(session);
         if (session) buscarEnderecos(session.user.id);
@@ -168,25 +171,35 @@ function ShoppingCart() {
   const checkoutStore = async () => {
     if (cartItems.length === 0) return;
     setFinalizando(true);
+    setAlerta(null);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert('Por favor, acesse sua conta para finalizarmos seu pedido!');
-        setShowCart(false);
-        navigate('/login');
+        setAlerta({
+          tipo: 'warning',
+          texto: 'Você precisa acessar sua conta para finalizar o pedido.',
+          botaoUrl: '/login',
+          botaoTexto: 'Fazer Login'
+        });
+        setFinalizando(false);
         return;
       }
 
       if (enderecos.length === 0) {
-        alert('Por favor, cadastre um endereço de entrega na sua conta antes de finalizar a compra.');
-        setShowCart(false);
-        navigate('/minha-conta');
+        setAlerta({
+          tipo: 'warning',
+          texto: 'Cadastre um endereço de entrega antes de finalizar a compra.',
+          botaoUrl: '/minha-conta',
+          botaoTexto: 'Cadastrar Endereço'
+        });
+        setFinalizando(false);
         return;
       }
 
       const userId = session.user.id;
       const endEscolhido = enderecos.find(e => e.id.toString() === enderecoSelecionado.toString());
+      
       const enderecoFormatado = `${endEscolhido.endereco}, Nº ${endEscolhido.numero} ${endEscolhido.complemento ? '('+endEscolhido.complemento+')' : ''} - Bairro: ${endEscolhido.bairro}, ${endEscolhido.cidade}/${endEscolhido.estado} - CEP: ${endEscolhido.cep}`;
 
       const { data: pedidoData, error: pedidoError } = await supabase
@@ -229,7 +242,11 @@ function ShoppingCart() {
 
     } catch (error) {
       console.error("Erro ao gerar pedido:", error);
-      alert('Tivemos um problema ao processar seu pedido. Tente novamente.');
+      setAlerta({
+        tipo: 'danger',
+        texto: 'Tivemos um problema ao processar seu pedido. Tente novamente.',
+        botaoUrl: null
+      });
     } finally {
       setFinalizando(false);
     }
@@ -279,9 +296,26 @@ function ShoppingCart() {
             </div>
 
             <div className="bg-light p-4 border-top mt-auto">
-              
-              {/* NOVO: SELEÇÃO DE ENDEREÇO DE ENTREGA NA SACOLA */}
-              {session && (
+              {alerta && (
+                <Alert variant={alerta.tipo} className="rounded-0 text-center shadow-sm p-3 mb-4">
+                  <div className="small fw-bold mb-2">{alerta.texto}</div>
+                  {alerta.botaoUrl && (
+                    <Button 
+                      variant="dark" 
+                      size="sm" 
+                      className="rounded-0 text-uppercase letter-spacing-1 px-4"
+                      onClick={() => {
+                        setShowCart(false);
+                        navigate(alerta.botaoUrl);
+                      }}
+                    >
+                      {alerta.botaoTexto}
+                    </Button>
+                  )}
+                </Alert>
+              )}
+
+              {session && !alerta && (
                 <div className="mb-3">
                   <small className="fw-bold text-dark d-block mb-1"><FaMapMarkerAlt className="text-muted me-1"/> Entregar em:</small>
                   {enderecos.length > 0 ? (
@@ -684,11 +718,6 @@ function Footer() {
         <Row className="align-items-center gy-3">
           <Col md={6} className="text-center text-md-start">
             <small className="text-muted">© {currentYear} <strong>Floressia Pratas</strong>. Todos os direitos reservados.</small>
-          </Col>
-          <Col md={6} className="text-center text-md-end">
-            <Link to="/login" className="text-muted text-decoration-none" style={{ fontSize: '0.75rem' }}>
-              <FaLock className="me-1 mb-1" size={10} /> Área Restrita
-            </Link>
           </Col>
         </Row>
       </Container>
