@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Link, Outlet, useParams, Navigate } from 'react-router-dom';
-import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge, Spinner } from 'react-bootstrap';
-import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft } from 'react-icons/fa';
+import { BrowserRouter, Routes, Route, Link, Outlet, useParams, Navigate, useNavigate } from 'react-router-dom';
+import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge, Spinner, Alert, Form } from 'react-bootstrap';
+import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft, FaUser, FaHeart, FaRegHeart, FaMapMarkerAlt } from 'react-icons/fa';
 import { supabase } from './supabase';
 import { CartProvider, useCart } from './context/CartContext';
 import Admin from './pages/Admin';
 import ProductDetails from './pages/ProductDetails';
 import Login from './pages/Login';
 import Fornecedores from './pages/Fornecedores';
+import MinhaConta from './pages/MinhaConta';
+import AdminPedidos from './pages/AdminPedidos';
 import logoMarca from './assets/banner-floressia.png';
 import inauguracaoBanner from './assets/inauguracao-banner.png';
 
@@ -17,6 +19,48 @@ function ProductCard({ product }) {
   const disponivel = product.em_estoque !== false;
   const isOnPromo = product.preco_antigo && product.preco < product.preco_antigo;
   const formatPrice = (price) => price.toFixed(2).replace('.', ',');
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  useEffect(() => {
+    verificarFavorito();
+  }, [product.id]);
+
+  async function verificarFavorito() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data } = await supabase
+      .from('favoritos')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .eq('produto_id', product.id)
+      .maybeSingle();
+
+    if (data) setIsFavorite(true);
+  }
+
+  async function toggleFavorite(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      alert('Faça login ou crie uma conta rapidinho para salvar seus favoritos!');
+      return;
+    }
+
+    try {
+      if (isFavorite) {
+        await supabase.from('favoritos').delete().eq('user_id', session.user.id).eq('produto_id', product.id);
+        setIsFavorite(false);
+      } else {
+        await supabase.from('favoritos').insert([{ user_id: session.user.id, produto_id: product.id }]);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error("Erro ao favoritar", error);
+    }
+  }
   
   return (
     <Col xs={6} md={4} lg={3} className="mb-4 px-2 px-md-3">
@@ -26,6 +70,15 @@ function ProductCard({ product }) {
             PROMO
           </Badge>
         )}
+
+        <button 
+          onClick={toggleFavorite}
+          className="btn btn-link position-absolute top-0 end-0 m-2 z-1 p-1 text-decoration-none shadow-none"
+          style={{ color: isFavorite ? '#dc3545' : '#6c757d', backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}
+          title={isFavorite ? "Remover dos favoritos" : "Salvar nos favoritos"}
+        >
+          {isFavorite ? <FaHeart size={18} /> : <FaRegHeart size={18} />}
+        </button>
 
         <Link to={`/produto/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="product-image-container" style={{ overflow: 'hidden', cursor: 'pointer', opacity: disponivel ? 1 : 0.6, backgroundColor: '#f8f9fa' }}>
@@ -84,17 +137,119 @@ function ProductCard({ product }) {
 function ShoppingCart() {
   const { showCart, setShowCart, cartItems, addToCart, decreaseQuantity, removeFromCart, cartTotal } = useCart();
   const PHONE_NUMBER = "5564992641367"; 
+  
+  const navigate = useNavigate(); 
+  const [finalizando, setFinalizando] = useState(false); 
 
-  const checkoutWhatsApp = () => {
+  const [session, setSession] = useState(null);
+  const [enderecos, setEnderecos] = useState([]);
+  const [enderecoSelecionado, setEnderecoSelecionado] = useState('');
+
+  const [alerta, setAlerta] = useState(null);
+
+  useEffect(() => {
+    if (showCart) {
+      setAlerta(null);
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        if (session) buscarEnderecos(session.user.id);
+        else setEnderecos([]);
+      });
+    }
+  }, [showCart]);
+
+  async function buscarEnderecos(userId) {
+    const { data } = await supabase.from('enderecos').select('*').eq('user_id', userId).order('id', { ascending: false });
+    if (data && data.length > 0) {
+      setEnderecos(data);
+      setEnderecoSelecionado(data[0].id.toString());
+    } else {
+      setEnderecos([]);
+    }
+  }
+
+  const checkoutStore = async () => {
     if (cartItems.length === 0) return;
-    let message = "*Olá! Gostaria de finalizar meu pedido na Floréssia:*\n\n";
-    cartItems.forEach(item => {
-      message += `• ${item.quantity}x ${item.nome}\n   (R$ ${(item.preco * item.quantity).toFixed(2)})\n`;
-    });
-    message += `\n*Valor Total: R$ ${cartTotal.toFixed(2)}*`;
-    message += "\n\nAguardo instruções para pagamento e entrega.";
-    const url = `https://wa.me/${PHONE_NUMBER}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+    setFinalizando(true);
+    setAlerta(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setAlerta({
+          tipo: 'warning',
+          texto: 'Você precisa acessar sua conta para finalizar o pedido.',
+          botaoUrl: '/login',
+          botaoTexto: 'Fazer Login'
+        });
+        setFinalizando(false);
+        return;
+      }
+
+      if (enderecos.length === 0) {
+        setAlerta({
+          tipo: 'warning',
+          texto: 'Cadastre um endereço de entrega antes de finalizar a compra.',
+          botaoUrl: '/minha-conta',
+          botaoTexto: 'Cadastrar Endereço'
+        });
+        setFinalizando(false);
+        return;
+      }
+
+      const userId = session.user.id;
+      const endEscolhido = enderecos.find(e => e.id.toString() === enderecoSelecionado.toString());
+      
+      const enderecoFormatado = `${endEscolhido.endereco}, Nº ${endEscolhido.numero} ${endEscolhido.complemento ? '('+endEscolhido.complemento+')' : ''} - Bairro: ${endEscolhido.bairro}, ${endEscolhido.cidade}/${endEscolhido.estado} - CEP: ${endEscolhido.cep}`;
+
+      const { data: pedidoData, error: pedidoError } = await supabase
+        .from('pedidos')
+        .insert([{ 
+          user_id: userId, 
+          total: cartTotal,
+          endereco_entrega: enderecoFormatado
+        }])
+        .select()
+        .single();
+
+      if (pedidoError) throw pedidoError;
+      const pedidoId = pedidoData.id;
+
+      const itensParaInserir = cartItems.map(item => {
+        const idReal = item.id.toString().split('-')[0];
+        return {
+          pedido_id: pedidoId,
+          produto_id: isNaN(idReal) ? null : parseInt(idReal),
+          nome_produto: item.nome,
+          preco_unitario: item.preco,
+          quantidade: item.quantity,
+          tamanho: item.nome.includes('Tam:') ? item.nome.split('Tam: ')[1].replace(')', '') : null
+        };
+      });
+
+      const { error: itensError } = await supabase.from('itens_pedido').insert(itensParaInserir);
+      if (itensError) throw itensError;
+
+      let message = `*Olá! Acabei de fazer o Pedido #${pedidoId} no site da Floréssia:*\n\n`;
+      cartItems.forEach(item => { message += `• ${item.quantity}x ${item.nome}\n`; });
+      message += `\n*Valor Total: R$ ${cartTotal.toFixed(2).replace('.', ',')}*`;
+      message += `\n*Entrega em:* ${endEscolhido.titulo} (${endEscolhido.cidade}/${endEscolhido.estado})`;
+      message += "\n\nAguardo instruções para pagamento e envio.";
+      
+      const url = `https://wa.me/${PHONE_NUMBER}?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank');
+      setShowCart(false);
+
+    } catch (error) {
+      console.error("Erro ao gerar pedido:", error);
+      setAlerta({
+        tipo: 'danger',
+        texto: 'Tivemos um problema ao processar seu pedido. Tente novamente.',
+        botaoUrl: null
+      });
+    } finally {
+      setFinalizando(false);
+    }
   };
 
   return (
@@ -124,22 +279,16 @@ function ShoppingCart() {
                   <div className="flex-grow-1 ms-3">
                     <div className="d-flex justify-content-between align-items-start">
                       <h6 className="mb-1 fw-bold text-truncate" style={{ maxWidth: '160px' }}>{item.nome}</h6>
-                      <button onClick={() => removeFromCart(item.id)} className="btn btn-link text-danger p-0 text-decoration-none">
-                        <FaTrash size={14} />
-                      </button>
+                      <button onClick={() => removeFromCart(item.id)} className="btn btn-link text-danger p-0 text-decoration-none"><FaTrash size={14} /></button>
                     </div>
-                    <p className="mb-2 text-muted small" style={{ fontSize: '0.85rem' }}>
-                      Unitário: R$ {item.preco.toFixed(2).replace('.', ',')}
-                    </p>
+                    <p className="mb-2 text-muted small" style={{ fontSize: '0.85rem' }}>Unitário: R$ {item.preco.toFixed(2).replace('.', ',')}</p>
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="d-flex align-items-center border rounded">
                         <button onClick={() => decreaseQuantity(item.id)} className="btn btn-sm px-2 py-0 border-end" style={{ height: '28px' }}>-</button>
                         <span className="px-3 small fw-bold">{item.quantity}</span>
                         <button onClick={() => addToCart(item)} className="btn btn-sm px-2 py-0 border-start" style={{ height: '28px' }}>+</button>
                       </div>
-                      <span className="fw-bold text-dark">
-                        R$ {(item.preco * item.quantity).toFixed(2).replace('.', ',')}
-                      </span>
+                      <span className="fw-bold text-dark">R$ {(item.preco * item.quantity).toFixed(2).replace('.', ',')}</span>
                     </div>
                   </div>
                 </div>
@@ -147,6 +296,49 @@ function ShoppingCart() {
             </div>
 
             <div className="bg-light p-4 border-top mt-auto">
+              {alerta && (
+                <Alert variant={alerta.tipo} className="rounded-0 text-center shadow-sm p-3 mb-4">
+                  <div className="small fw-bold mb-2">{alerta.texto}</div>
+                  {alerta.botaoUrl && (
+                    <Button 
+                      variant="dark" 
+                      size="sm" 
+                      className="rounded-0 text-uppercase letter-spacing-1 px-4"
+                      onClick={() => {
+                        setShowCart(false);
+                        navigate(alerta.botaoUrl);
+                      }}
+                    >
+                      {alerta.botaoTexto}
+                    </Button>
+                  )}
+                </Alert>
+              )}
+
+              {session && !alerta && (
+                <div className="mb-3">
+                  <small className="fw-bold text-dark d-block mb-1"><FaMapMarkerAlt className="text-muted me-1"/> Entregar em:</small>
+                  {enderecos.length > 0 ? (
+                    <Form.Select 
+                      size="sm" 
+                      className="rounded-0 border-secondary-subtle bg-white shadow-sm"
+                      value={enderecoSelecionado}
+                      onChange={e => setEnderecoSelecionado(e.target.value)}
+                    >
+                      {enderecos.map(end => (
+                        <option key={end.id} value={end.id}>
+                          {end.titulo} - {end.endereco}, {end.numero}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  ) : (
+                    <Button as={Link} to="/minha-conta" variant="outline-danger" size="sm" className="w-100 rounded-0" onClick={() => setShowCart(false)}>
+                      + Cadastrar Endereço de Entrega
+                    </Button>
+                  )}
+                </div>
+              )}
+
               <div className="d-flex justify-content-between align-items-end mb-3">
                 <span className="text-muted">Subtotal</span>
                 <h3 className="mb-0 fw-bold" style={{ fontFamily: 'Playfair Display' }}>
@@ -154,8 +346,16 @@ function ShoppingCart() {
                 </h3>
               </div>
               <small className="d-block text-muted mb-3 text-center">Frete e descontos calculados no WhatsApp</small>
-              <Button variant="success" size="lg" className="w-100 rounded-0 d-flex align-items-center justify-content-center gap-2 text-white fw-bold py-3" onClick={checkoutWhatsApp} style={{ background: '#25D366', borderColor: '#25D366' }}>
-                <FaWhatsapp size={24} /> FINALIZAR PEDIDO
+              
+              <Button 
+                variant="success" 
+                size="lg" 
+                className="w-100 rounded-0 d-flex align-items-center justify-content-center gap-2 text-white fw-bold py-3" 
+                onClick={checkoutStore} 
+                disabled={finalizando}
+                style={{ background: '#25D366', borderColor: '#25D366' }}
+              >
+                {finalizando ? <Spinner size="sm" animation="border" /> : <><FaWhatsapp size={24} /> FINALIZAR PEDIDO</>}
               </Button>
             </div>
           </>
@@ -168,6 +368,33 @@ function ShoppingCart() {
 // --- CABEÇALHO ---
 function Header() {
   const { setShowCart, cartItems } = useCart();
+  const [userName, setUserName] = useState(null);
+  
+  const cartSize = cartItems ? cartItems.length : 0;
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) buscarNomeUsuario(session.user.id);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        buscarNomeUsuario(session.user.id);
+      } else {
+        setUserName(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function buscarNomeUsuario(userId) {
+    const { data } = await supabase.from('perfis').select('nome').eq('id', userId).single();
+    if (data && data.nome) {
+      setUserName(data.nome.split(' ')[0]);
+    }
+  }
+
   return (
     <Navbar bg="white" expand="lg" className="shadow-sm sticky-top py-2">
       <Container className="position-relative">
@@ -180,21 +407,31 @@ function Header() {
           />
         </Navbar.Brand>
         <Nav className="position-absolute end-0 pe-3 top-50 translate-middle-y">
-          <Button variant="outline-dark" onClick={() => setShowCart(true)} className="position-relative border-0 p-2 d-flex align-items-center justify-content-center bg-light rounded-circle" style={{ width: '40px', height: '40px' }}>
-            <FaShoppingCart size={18} />
-            {cartItems.length > 0 && (
-              <Badge bg="dark" className="position-absolute top-0 start-100 translate-middle rounded-circle" style={{ fontSize: '0.65rem' }}>
-                {cartItems.length}
-              </Badge>
-            )}
-          </Button>
+          <div className="d-flex align-items-center gap-4">
+            <Link to="/minha-conta" className="text-dark d-flex align-items-center gap-2 text-decoration-none" title="Minha Conta">
+              <FaUser className="fs-5" />
+              <span className="d-none d-md-block small fw-bold text-uppercase letter-spacing-1">
+                {userName ? `Olá, ${userName}` : 'Entrar'}
+              </span>
+            </Link>
+
+            <Button variant="link" className="text-dark position-relative p-0 border-0" onClick={() => setShowCart(true)}>
+              <FaShoppingCart className="fs-5" />
+              {cartSize > 0 && (
+                <Badge bg="dark" className="position-absolute top-0 start-100 translate-middle rounded-circle" style={{fontSize: '0.6rem'}}>
+                  {cartSize}
+                </Badge>
+              )}
+            </Button>
+
+          </div>
         </Nav>
       </Container>
     </Navbar>
   );
 }
 
-// --- PÁGINA INICIAL (VITRINE) ---
+// --- PÁGINA INICIAL ---
 function Store() {
   const [products, setProducts] = useState([]);
   const [filtro, setFiltro] = useState('todos');
@@ -259,7 +496,7 @@ function Store() {
         </Container>
       </div>
 
-      {/* BARRA DE BENEFÍCIOS (Estilo Premium) */}
+      {/* BARRA DE BENEFÍCIOS */}
       <div className="bg-light py-4 mb-5">
         <Container>
           <Row className="gy-4 justify-content-center">
@@ -482,11 +719,6 @@ function Footer() {
           <Col md={6} className="text-center text-md-start">
             <small className="text-muted">© {currentYear} <strong>Floressia Pratas</strong>. Todos os direitos reservados.</small>
           </Col>
-          <Col md={6} className="text-center text-md-end">
-            <Link to="/login" className="text-muted text-decoration-none" style={{ fontSize: '0.75rem' }}>
-              <FaLock className="me-1 mb-1" size={10} /> Área Restrita
-            </Link>
-          </Col>
         </Row>
       </Container>
     </footer>
@@ -553,6 +785,7 @@ export default function App() {
           <Route element={<StoreLayout />}>
             <Route path="/" element={<Store />} />
             <Route path="/produto/:id" element={<ProductDetails />} />
+            <Route path="/minha-conta" element={<MinhaConta />} />
             <Route path="/colecao/:tipo" element={<CollectionPage />} />
           </Route>
           <Route path="/login" element={<Login />} />
@@ -564,6 +797,11 @@ export default function App() {
           <Route path="/admin/fornecedores" element={
             <RotaProtegida>
               <Fornecedores />
+            </RotaProtegida>
+          } />
+          <Route path="/admin/pedidos" element={
+            <RotaProtegida>
+              <AdminPedidos />
             </RotaProtegida>
           } />
         </Routes>
