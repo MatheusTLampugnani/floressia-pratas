@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Link, Outlet, useParams, Navigate, useNavigate } from 'react-router-dom';
-import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge, Spinner, Alert, Form } from 'react-bootstrap';
-import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft, FaUser, FaHeart, FaRegHeart, FaMapMarkerAlt } from 'react-icons/fa';
+import { BrowserRouter, Routes, Route, Link, Outlet, useParams, Navigate, useNavigate, useOutletContext } from 'react-router-dom';
+import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge, Spinner, Alert, Form, Modal } from 'react-bootstrap';
+import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft, FaUser, FaHeart, FaRegHeart, FaMapMarkerAlt, FaSearch } from 'react-icons/fa';
 import { supabase } from './supabase';
 import { CartProvider, useCart } from './context/CartContext';
 import Admin from './pages/Admin';
@@ -20,6 +20,7 @@ function ProductCard({ product }) {
   const isOnPromo = product.preco_antigo && product.preco < product.preco_antigo;
   const formatPrice = (price) => price.toFixed(2).replace('.', ',');
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
     verificarFavorito();
@@ -28,27 +29,17 @@ function ProductCard({ product }) {
   async function verificarFavorito() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-
-    const { data } = await supabase
-      .from('favoritos')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .eq('produto_id', product.id)
-      .maybeSingle();
-
+    const { data } = await supabase.from('favoritos').select('*').eq('user_id', session.user.id).eq('produto_id', product.id).maybeSingle();
     if (data) setIsFavorite(true);
   }
 
   async function toggleFavorite(e) {
-    e.preventDefault();
-    e.stopPropagation();
-
+    e.preventDefault(); e.stopPropagation();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      alert('Faça login ou crie uma conta rapidinho para salvar seus favoritos!');
+      setShowLoginModal(true);
       return;
     }
-
     try {
       if (isFavorite) {
         await supabase.from('favoritos').delete().eq('user_id', session.user.id).eq('produto_id', product.id);
@@ -57,62 +48,58 @@ function ProductCard({ product }) {
         await supabase.from('favoritos').insert([{ user_id: session.user.id, produto_id: product.id }]);
         setIsFavorite(true);
       }
-    } catch (error) {
-      console.error("Erro ao favoritar", error);
-    }
+    } catch (error) { console.error("Erro ao favoritar", error); }
   }
   
   return (
-    <Col xs={6} md={4} lg={3} className="mb-4 px-2 px-md-3">
+    <Col xs={6} md={4} lg={3} className="mb-3 mb-md-4 px-1 px-md-3">
       <Card className="h-100 shadow-sm border-0 position-relative product-card rounded-0">
         {isOnPromo && disponivel && (
-          <Badge bg="danger" className="position-absolute top-0 start-0 m-2 rounded-0 z-1" style={{ letterSpacing: '1px', fontSize: '0.6rem' }}>
+          <Badge bg="danger" className="position-absolute top-0 start-0 m-1 m-md-2 rounded-0 z-1 promo-badge">
             PROMO
           </Badge>
         )}
 
         <button 
           onClick={toggleFavorite}
-          className="btn btn-link position-absolute top-0 end-0 m-2 z-1 p-1 text-decoration-none shadow-none"
-          style={{ color: isFavorite ? '#dc3545' : '#6c757d', backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}
-          title={isFavorite ? "Remover dos favoritos" : "Salvar nos favoritos"}
+          className="btn btn-link position-absolute top-0 end-0 m-1 m-md-2 z-1 p-1 text-decoration-none shadow-none fav-btn"
+          style={{ color: isFavorite ? '#dc3545' : '#6c757d', backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: '50%' }}
         >
-          {isFavorite ? <FaHeart size={18} /> : <FaRegHeart size={18} />}
+          {isFavorite ? <FaHeart className="fav-icon" /> : <FaRegHeart className="fav-icon" />}
         </button>
 
         <Link to={`/produto/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="product-image-container" style={{ overflow: 'hidden', cursor: 'pointer', opacity: disponivel ? 1 : 0.6, backgroundColor: '#f8f9fa' }}>
+          <div className="product-image-container bg-light" style={{ overflow: 'hidden', opacity: disponivel ? 1 : 0.6 }}>
             <Card.Img 
               variant="top" 
               src={product.imagem_url || "https://placehold.co/300"} 
               className="product-img rounded-0"
               loading="lazy"
-              style={{ objectFit: 'cover', width: '100%', aspectRatio: '1/1', transition: 'transform 0.4s ease' }} 
             />
           </div>
         </Link>
 
         <Card.Body className="d-flex flex-column text-center p-2 p-md-3">
           <Link to={`/produto/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-             <Card.Title style={{fontFamily: 'Playfair Display', cursor: 'pointer'}} className="text-truncate fs-6 mb-1">
+             <Card.Title style={{fontFamily: 'Playfair Display'}} className="text-truncate product-title mb-1">
                {product.nome}
              </Card.Title>
           </Link>
 
           <Card.Text className="text-muted small text-truncate d-none d-md-block mb-2">{product.descricao}</Card.Text>
           
-          <div className="mt-auto mb-3">
+          <div className="mt-auto mb-2 mb-md-3">
             {isOnPromo ? (
-              <div className="d-flex flex-column flex-lg-row align-items-center justify-content-center gap-1">
-                 <span className="text-muted text-decoration-line-through" style={{fontSize: '0.75rem'}}>
+              <div className="d-flex flex-column flex-lg-row align-items-center justify-content-center gap-0 gap-lg-2">
+                 <span className="text-muted text-decoration-line-through price-old">
                    R$ {formatPrice(product.preco_antigo)}
                  </span>
-                 <span className="price-tag fw-bold text-success" style={{fontSize: '1rem'}}>
+                 <span className="fw-bold text-success price-current">
                    R$ {formatPrice(product.preco)}
                  </span>
               </div>
             ) : (
-              <span className="price-tag fw-bold" style={{fontSize: '1rem'}}>
+              <span className="fw-bold price-current text-dark">
                  R$ {formatPrice(product.preco)}
               </span>
             )}
@@ -121,14 +108,27 @@ function ProductCard({ product }) {
           <Button 
             variant={disponivel ? "dark" : "secondary"} 
             onClick={() => disponivel && addToCart(product)} 
-            className="w-100 rounded-0 text-uppercase fw-bold"
-            style={{ fontSize: '0.7rem', padding: '10px 0', letterSpacing: '0.5px' }}
+            className="w-100 rounded-0 text-uppercase fw-bold add-btn"
             disabled={!disponivel}
           >
             {disponivel ? 'Adicionar' : 'Esgotado'}
           </Button>
         </Card.Body>
       </Card>
+
+      <Modal show={showLoginModal} onHide={() => setShowLoginModal(false)} centered>
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title style={{fontFamily: 'Playfair Display'}}>Acesse sua conta</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center pb-4 pt-2">
+          <FaRegHeart size={40} className="text-danger mb-3 opacity-75" />
+          <p className="text-muted mb-4 px-2">Faça login ou crie uma conta rapidinho para salvar suas joias favoritas!</p>
+          <div className="d-flex flex-column flex-sm-row justify-content-center gap-2">
+            <Button variant="outline-secondary" className="rounded-0 px-4" onClick={() => setShowLoginModal(false)}>Agora não</Button>
+            <Button as={Link} to="/login" variant="dark" className="rounded-0 px-4" onClick={() => setShowLoginModal(false)}>Fazer Login</Button>
+          </div>
+        </Modal.Body>
+      </Modal>
     </Col>
   );
 }
@@ -137,14 +137,11 @@ function ProductCard({ product }) {
 function ShoppingCart() {
   const { showCart, setShowCart, cartItems, addToCart, decreaseQuantity, removeFromCart, cartTotal } = useCart();
   const PHONE_NUMBER = "5564992641367"; 
-  
   const navigate = useNavigate(); 
   const [finalizando, setFinalizando] = useState(false); 
-
   const [session, setSession] = useState(null);
   const [enderecos, setEnderecos] = useState([]);
   const [enderecoSelecionado, setEnderecoSelecionado] = useState('');
-
   const [alerta, setAlerta] = useState(null);
 
   useEffect(() => {
@@ -163,9 +160,7 @@ function ShoppingCart() {
     if (data && data.length > 0) {
       setEnderecos(data);
       setEnderecoSelecionado(data[0].id.toString());
-    } else {
-      setEnderecos([]);
-    }
+    } else setEnderecos([]);
   }
 
   const checkoutStore = async () => {
@@ -176,86 +171,45 @@ function ShoppingCart() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        setAlerta({
-          tipo: 'warning',
-          texto: 'Você precisa acessar sua conta para finalizar o pedido.',
-          botaoUrl: '/login',
-          botaoTexto: 'Fazer Login'
-        });
-        setFinalizando(false);
-        return;
+        setAlerta({ tipo: 'warning', texto: 'Acesse sua conta para finalizar o pedido.', botaoUrl: '/login', botaoTexto: 'Fazer Login' });
+        setFinalizando(false); return;
       }
-
       if (enderecos.length === 0) {
-        setAlerta({
-          tipo: 'warning',
-          texto: 'Cadastre um endereço de entrega antes de finalizar a compra.',
-          botaoUrl: '/minha-conta',
-          botaoTexto: 'Cadastrar Endereço'
-        });
-        setFinalizando(false);
-        return;
+        setAlerta({ tipo: 'warning', texto: 'Cadastre um endereço de entrega.', botaoUrl: '/minha-conta', botaoTexto: 'Cadastrar Endereço' });
+        setFinalizando(false); return;
       }
 
-      const userId = session.user.id;
       const endEscolhido = enderecos.find(e => e.id.toString() === enderecoSelecionado.toString());
-      
       const enderecoFormatado = `${endEscolhido.endereco}, Nº ${endEscolhido.numero} ${endEscolhido.complemento ? '('+endEscolhido.complemento+')' : ''} - Bairro: ${endEscolhido.bairro}, ${endEscolhido.cidade}/${endEscolhido.estado} - CEP: ${endEscolhido.cep}`;
 
-      const { data: pedidoData, error: pedidoError } = await supabase
-        .from('pedidos')
-        .insert([{ 
-          user_id: userId, 
-          total: cartTotal,
-          endereco_entrega: enderecoFormatado
-        }])
-        .select()
-        .single();
-
+      const { data: pedidoData, error: pedidoError } = await supabase.from('pedidos').insert([{ user_id: session.user.id, total: cartTotal, endereco_entrega: enderecoFormatado }]).select().single();
       if (pedidoError) throw pedidoError;
-      const pedidoId = pedidoData.id;
 
       const itensParaInserir = cartItems.map(item => {
         const idReal = item.id.toString().split('-')[0];
-        return {
-          pedido_id: pedidoId,
-          produto_id: isNaN(idReal) ? null : parseInt(idReal),
-          nome_produto: item.nome,
-          preco_unitario: item.preco,
-          quantidade: item.quantity,
-          tamanho: item.nome.includes('Tam:') ? item.nome.split('Tam: ')[1].replace(')', '') : null
-        };
+        return { pedido_id: pedidoData.id, produto_id: isNaN(idReal) ? null : parseInt(idReal), nome_produto: item.nome, preco_unitario: item.preco, quantidade: item.quantity, tamanho: item.nome.includes('Tam:') ? item.nome.split('Tam: ')[1].replace(')', '') : null };
       });
-
       const { error: itensError } = await supabase.from('itens_pedido').insert(itensParaInserir);
       if (itensError) throw itensError;
 
-      let message = `*Olá! Acabei de fazer o Pedido #${pedidoId} no site da Floréssia:*\n\n`;
+      let message = `*Olá! Acabei de fazer o Pedido #${pedidoData.id} no site da Floréssia:*\n\n`;
       cartItems.forEach(item => { message += `• ${item.quantity}x ${item.nome}\n`; });
       message += `\n*Valor Total: R$ ${cartTotal.toFixed(2).replace('.', ',')}*`;
       message += `\n*Entrega em:* ${endEscolhido.titulo} (${endEscolhido.cidade}/${endEscolhido.estado})`;
       message += "\n\nAguardo instruções para pagamento e envio.";
       
-      const url = `https://wa.me/${PHONE_NUMBER}?text=${encodeURIComponent(message)}`;
-      window.open(url, '_blank');
+      window.open(`https://wa.me/${PHONE_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
       setShowCart(false);
-
     } catch (error) {
       console.error("Erro ao gerar pedido:", error);
-      setAlerta({
-        tipo: 'danger',
-        texto: 'Tivemos um problema ao processar seu pedido. Tente novamente.',
-        botaoUrl: null
-      });
-    } finally {
-      setFinalizando(false);
-    }
+      setAlerta({ tipo: 'danger', texto: 'Problema ao processar pedido. Tente novamente.' });
+    } finally { setFinalizando(false); }
   };
 
   return (
-    <Offcanvas show={showCart} onHide={() => setShowCart(false)} placement="end" style={{ width: '100%', maxWidth: '400px' }}>
-      <Offcanvas.Header closeButton className="border-bottom">
-        <Offcanvas.Title style={{ fontFamily: 'Playfair Display', fontSize: '1.5rem' }}>
+    <Offcanvas show={showCart} onHide={() => setShowCart(false)} placement="end" className="cart-offcanvas">
+      <Offcanvas.Header closeButton className="border-bottom py-3">
+        <Offcanvas.Title style={{ fontFamily: 'Playfair Display' }} className="fs-4 fw-bold">
           Sua Sacola ({cartItems.length})
         </Offcanvas.Title>
       </Offcanvas.Header>
@@ -265,50 +219,41 @@ function ShoppingCart() {
           <div className="text-center my-auto p-4">
             <FaShoppingCart size={50} className="text-muted mb-3 opacity-25" />
             <h5 className="text-muted">Sua sacola está vazia</h5>
-            <p className="small text-secondary mb-4">Que tal explorar nossas novidades?</p>
-            <Button variant="dark" onClick={() => setShowCart(false)}>Começar a Comprar</Button>
+            <Button variant="dark" className="mt-3 rounded-0 px-4" onClick={() => setShowCart(false)}>Começar a Comprar</Button>
           </div>
         ) : (
           <>
             <div className="flex-grow-1 overflow-auto p-3">
               {cartItems.map(item => (
-                <div key={item.id} className="d-flex align-items-center mb-4 pb-4 border-bottom position-relative">
-                  <div className="flex-shrink-0 bg-light rounded overflow-hidden" style={{ width: '80px', height: '80px' }}>
+                <div key={item.id} className="d-flex align-items-center mb-3 pb-3 border-bottom position-relative">
+                  <div className="flex-shrink-0 bg-light border" style={{ width: '70px', height: '70px' }}>
                     <img src={item.imagem_url || "https://placehold.co/100"} alt={item.nome} className="w-100 h-100 object-fit-cover" />
                   </div>
                   <div className="flex-grow-1 ms-3">
                     <div className="d-flex justify-content-between align-items-start">
-                      <h6 className="mb-1 fw-bold text-truncate" style={{ maxWidth: '160px' }}>{item.nome}</h6>
-                      <button onClick={() => removeFromCart(item.id)} className="btn btn-link text-danger p-0 text-decoration-none"><FaTrash size={14} /></button>
+                      <h6 className="mb-0 fw-bold text-truncate pe-2" style={{ maxWidth: '180px', fontSize: '0.9rem' }}>{item.nome}</h6>
+                      <button onClick={() => removeFromCart(item.id)} className="btn btn-link text-danger p-0 m-0"><FaTrash size={14} /></button>
                     </div>
-                    <p className="mb-2 text-muted small" style={{ fontSize: '0.85rem' }}>Unitário: R$ {item.preco.toFixed(2).replace('.', ',')}</p>
+                    <p className="mb-2 text-muted mt-1" style={{ fontSize: '0.8rem' }}>R$ {item.preco.toFixed(2).replace('.', ',')}</p>
                     <div className="d-flex align-items-center justify-content-between">
                       <div className="d-flex align-items-center border rounded">
-                        <button onClick={() => decreaseQuantity(item.id)} className="btn btn-sm px-2 py-0 border-end" style={{ height: '28px' }}>-</button>
+                        <button onClick={() => decreaseQuantity(item.id)} className="btn btn-sm px-2 py-0 border-end bg-white">-</button>
                         <span className="px-3 small fw-bold">{item.quantity}</span>
-                        <button onClick={() => addToCart(item)} className="btn btn-sm px-2 py-0 border-start" style={{ height: '28px' }}>+</button>
+                        <button onClick={() => addToCart(item)} className="btn btn-sm px-2 py-0 border-start bg-white">+</button>
                       </div>
-                      <span className="fw-bold text-dark">R$ {(item.preco * item.quantity).toFixed(2).replace('.', ',')}</span>
+                      <span className="fw-bold text-dark fs-6">R$ {(item.preco * item.quantity).toFixed(2).replace('.', ',')}</span>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="bg-light p-4 border-top mt-auto">
+            <div className="bg-light p-3 p-md-4 border-top mt-auto shadow-sm">
               {alerta && (
-                <Alert variant={alerta.tipo} className="rounded-0 text-center shadow-sm p-3 mb-4">
+                <Alert variant={alerta.tipo} className="rounded-0 text-center shadow-sm p-3 mb-3">
                   <div className="small fw-bold mb-2">{alerta.texto}</div>
                   {alerta.botaoUrl && (
-                    <Button 
-                      variant="dark" 
-                      size="sm" 
-                      className="rounded-0 text-uppercase letter-spacing-1 px-4"
-                      onClick={() => {
-                        setShowCart(false);
-                        navigate(alerta.botaoUrl);
-                      }}
-                    >
+                    <Button variant="dark" size="sm" className="rounded-0 text-uppercase px-4" onClick={() => { setShowCart(false); navigate(alerta.botaoUrl); }}>
                       {alerta.botaoTexto}
                     </Button>
                   )}
@@ -319,43 +264,23 @@ function ShoppingCart() {
                 <div className="mb-3">
                   <small className="fw-bold text-dark d-block mb-1"><FaMapMarkerAlt className="text-muted me-1"/> Entregar em:</small>
                   {enderecos.length > 0 ? (
-                    <Form.Select 
-                      size="sm" 
-                      className="rounded-0 border-secondary-subtle bg-white shadow-sm"
-                      value={enderecoSelecionado}
-                      onChange={e => setEnderecoSelecionado(e.target.value)}
-                    >
-                      {enderecos.map(end => (
-                        <option key={end.id} value={end.id}>
-                          {end.titulo} - {end.endereco}, {end.numero}
-                        </option>
-                      ))}
+                    <Form.Select size="sm" className="rounded-0 border-secondary-subtle shadow-sm" value={enderecoSelecionado} onChange={e => setEnderecoSelecionado(e.target.value)}>
+                      {enderecos.map(end => <option key={end.id} value={end.id}>{end.titulo} - {end.endereco}</option>)}
                     </Form.Select>
                   ) : (
-                    <Button as={Link} to="/minha-conta" variant="outline-danger" size="sm" className="w-100 rounded-0" onClick={() => setShowCart(false)}>
-                      + Cadastrar Endereço de Entrega
-                    </Button>
+                    <Button as={Link} to="/minha-conta" variant="outline-danger" size="sm" className="w-100 rounded-0" onClick={() => setShowCart(false)}>+ Cadastrar Endereço</Button>
                   )}
                 </div>
               )}
 
-              <div className="d-flex justify-content-between align-items-end mb-3">
-                <span className="text-muted">Subtotal</span>
-                <h3 className="mb-0 fw-bold" style={{ fontFamily: 'Playfair Display' }}>
-                  R$ {cartTotal.toFixed(2).replace('.', ',')}
-                </h3>
+              <div className="d-flex justify-content-between align-items-end mb-2">
+                <span className="text-muted fw-bold">Subtotal</span>
+                <h3 className="mb-0 fw-bold" style={{ fontFamily: 'Playfair Display' }}>R$ {cartTotal.toFixed(2).replace('.', ',')}</h3>
               </div>
-              <small className="d-block text-muted mb-3 text-center">Frete e descontos calculados no WhatsApp</small>
+              <small className="d-block text-muted mb-3 text-center" style={{fontSize: '0.7rem'}}>Frete calculado no WhatsApp</small>
               
-              <Button 
-                variant="success" 
-                size="lg" 
-                className="w-100 rounded-0 d-flex align-items-center justify-content-center gap-2 text-white fw-bold py-3" 
-                onClick={checkoutStore} 
-                disabled={finalizando}
-                style={{ background: '#25D366', borderColor: '#25D366' }}
-              >
-                {finalizando ? <Spinner size="sm" animation="border" /> : <><FaWhatsapp size={24} /> FINALIZAR PEDIDO</>}
+              <Button variant="success" size="lg" className="w-100 rounded-0 d-flex align-items-center justify-content-center gap-2 text-white fw-bold py-2 py-md-3 shadow-sm" onClick={checkoutStore} disabled={finalizando} style={{ background: '#25D366', borderColor: '#25D366' }}>
+                {finalizando ? <Spinner size="sm" animation="border" /> : <><FaWhatsapp size={20} /> FINALIZAR PEDIDO</>}
               </Button>
             </div>
           </>
@@ -366,66 +291,69 @@ function ShoppingCart() {
 }
 
 // --- CABEÇALHO ---
-function Header() {
+function Header({ searchTerm, setSearchTerm }) {
   const { setShowCart, cartItems } = useCart();
   const [userName, setUserName] = useState(null);
-  
+  const navigate = useNavigate();
   const cartSize = cartItems ? cartItems.length : 0;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) buscarNomeUsuario(session.user.id);
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        buscarNomeUsuario(session.user.id);
-      } else {
-        setUserName(null);
-      }
+      if (session) buscarNomeUsuario(session.user.id);
+      else setUserName(null);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
   async function buscarNomeUsuario(userId) {
     const { data } = await supabase.from('perfis').select('nome').eq('id', userId).single();
-    if (data && data.nome) {
-      setUserName(data.nome.split(' ')[0]);
-    }
+    if (data && data.nome) setUserName(data.nome.split(' ')[0]);
   }
 
   return (
     <Navbar bg="white" expand="lg" className="shadow-sm sticky-top py-2">
-      <Container className="position-relative">
-        <Navbar.Brand as={Link} to="/" className="mx-auto mx-lg-0">
-          <img 
-            src={logoMarca} 
-            alt="Floréssia Pratas" 
-            style={{ maxHeight: '50px', width: 'auto' }} 
-            className="logo-img"
-          />
+      <Container className="position-relative d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap">
+        
+        {/* LOGO */}
+        <Navbar.Brand as={Link} to="/" className="m-0" onClick={() => setSearchTerm('')}>
+          <img src={logoMarca} alt="Floréssia Pratas" className="logo-img" />
         </Navbar.Brand>
-        <Nav className="position-absolute end-0 pe-3 top-50 translate-middle-y">
-          <div className="d-flex align-items-center gap-4">
-            <Link to="/minha-conta" className="text-dark d-flex align-items-center gap-2 text-decoration-none" title="Minha Conta">
-              <FaUser className="fs-5" />
-              <span className="d-none d-md-block small fw-bold text-uppercase letter-spacing-1">
-                {userName ? `Olá, ${userName}` : 'Entrar'}
-              </span>
-            </Link>
-
-            <Button variant="link" className="text-dark position-relative p-0 border-0" onClick={() => setShowCart(true)}>
-              <FaShoppingCart className="fs-5" />
-              {cartSize > 0 && (
-                <Badge bg="dark" className="position-absolute top-0 start-100 translate-middle rounded-circle" style={{fontSize: '0.6rem'}}>
-                  {cartSize}
-                </Badge>
-              )}
-            </Button>
-
+  
+        <Nav className="d-flex flex-row align-items-center gap-2 gap-md-4 ms-auto">
+          <div className="d-flex align-items-center bg-light rounded-pill px-2 py-1 border border-secondary-subtle">
+            <FaSearch className="text-muted ms-2 flex-shrink-0" size={13} />
+            <Form.Control
+              type="text"
+              placeholder="Buscar..."
+              className="border-0 bg-transparent shadow-none px-2 search-input"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                if (window.location.pathname !== '/') navigate('/');
+              }}
+            />
           </div>
+
+          <Link to="/minha-conta" className="text-dark d-flex align-items-center gap-2 text-decoration-none nav-icon-link">
+            <FaUser className="fs-5" />
+            <span className="d-none d-md-block small fw-bold text-uppercase letter-spacing-1">
+              {userName ? `Olá, ${userName}` : 'Entrar'}
+            </span>
+          </Link>
+          
+          <Button variant="link" className="text-dark position-relative p-0 border-0 nav-icon-link" onClick={() => setShowCart(true)}>
+            <FaShoppingCart className="fs-5" />
+            {cartSize > 0 && (
+              <Badge bg="dark" className="position-absolute top-0 start-100 translate-middle rounded-circle cart-badge">
+                {cartSize}
+              </Badge>
+            )}
+          </Button>
         </Nav>
+
       </Container>
     </Navbar>
   );
@@ -435,13 +363,13 @@ function Header() {
 function Store() {
   const [products, setProducts] = useState([]);
   const [filtro, setFiltro] = useState('todos');
-
-  const [mostrarTodosDestaques, setMostrarTodosDestaques] = useState(false);
-  const [mostrarTodasNovidades, setMostrarTodasNovidades] = useState(false);
-  const [mostrarTodoCatalogo, setMostrarTodoCatalogo] = useState(false);
+  const [categoriasLista, setCategoriasLista] = useState([]);
+  
+  const { searchTerm } = useOutletContext();
 
   useEffect(() => {
     fetchProducts();
+    fetchCategorias();
   }, []);
 
   async function fetchProducts() {
@@ -449,163 +377,140 @@ function Store() {
     if (data) setProducts(data);
   }
 
+  async function fetchCategorias() {
+    const { data } = await supabase.from('categorias').select('*').order('nome');
+    if (data) setCategoriasLista(data);
+  }
+
+  if (searchTerm && searchTerm.trim() !== '') {
+    const termo = searchTerm.toLowerCase();
+    const resultadosBusca = products.filter(p => 
+      p.nome.toLowerCase().includes(termo) || 
+      (p.descricao && p.descricao.toLowerCase().includes(termo)) ||
+      (p.categoria && p.categoria.toLowerCase().includes(termo))
+    );
+
+    return (
+      <Container className="py-5 min-vh-100 px-2 px-md-auto">
+        <div className="text-center mb-4 mt-2 mt-md-4">
+          <h2 className="section-title" style={{fontFamily: 'Playfair Display'}}>Resultados para "{searchTerm}"</h2>
+          <div className="divider-custom"></div>
+          <p className="text-muted small mt-2">{resultadosBusca.length} peças encontradas</p>
+        </div>
+        
+        <Row className="g-1 g-md-4 mx-0">
+          {resultadosBusca.map(product => <ProductCard key={product.id} product={product} />)}
+          
+          {resultadosBusca.length === 0 && (
+            <div className="text-center py-5 w-100 text-muted d-flex flex-column align-items-center">
+              <FaSearch size={40} className="mb-3 opacity-25" />
+              <h5 className="fw-normal">Nenhuma joia encontrada com esse nome.</h5>
+              <p className="small">Tente buscar por termos mais simples, como "Colar" ou "Zircônia".</p>
+            </div>
+          )}
+        </Row>
+      </Container>
+    );
+  }
+
   const destaques = products.filter(p => p.destaque === true || (p.preco_antigo && p.preco < p.preco_antigo));
   const novidades = products.filter(p => p.novidade === true);
   const produtosCatalogo = filtro === 'todos' ? products : products.filter(p => p.categoria === filtro);
 
-  const destaquesExibidos = destaques.slice(0, 4);
-  const novidadesExibidas = novidades.slice(0, 4);
-  const catalogoExibido = produtosCatalogo.slice(0, 8);
-
-  const handleFiltroClick = (categoria) => {
-    setFiltro(categoria);
-    setMostrarTodoCatalogo(false);
-  };
-
   return (
     <>
-      <div className="bg-light py-2 mb-0 border-bottom">
-        <Container>
-        {/* BANNER  */}
-          <div className="w-100 mb-4 p-0">
+      <div className="bg-light pb-2 mb-0 border-bottom">
+        <Container className="px-0 px-md-3">
+          <div className="w-100 mb-3 mb-md-4">
             <Link to="/colecao/todos" className="d-block">
-              <img 
-                src={inauguracaoBanner} 
-                alt="Grande Inauguração Floréssia Pratas" 
-                className="w-100"
-                style={{ display: 'block', objectFit: 'cover' }}
-              />
+              {/* <img src={inauguracaoBanner} alt="Grande Inauguração" className="w-100 img-fluid banner-home" /> */}
             </Link>
           </div>
-
-          {/* MENU DE CATEGORIAS */}
-          <div className="category-scroll d-flex justify-content-md-center gap-2 pb-2 pb-md-0">
-             {['todos', 'aneis', 'colares', 'brincos', 'pulseiras', 'pingentes'].map(cat => (
-               <Button 
-                 key={cat}
-                 variant={filtro === cat ? 'dark' : 'outline-dark'} 
-                 onClick={() => handleFiltroClick(cat)} 
-                 size="sm" 
-                 className="rounded-pill px-4 text-uppercase flex-shrink-0"
-                 style={{fontSize: '0.75rem', letterSpacing: '1px'}}
-               >
-                 {cat}
-               </Button>
-             ))}
+        </Container>
+        
+        <Container>
+          <div className="category-scroll d-flex gap-2 pb-2 px-2 px-md-0 justify-content-start justify-content-md-center">
+            <button className={`cat-btn ${filtro === 'todos' ? 'cat-btn-active' : ''}`} onClick={() => setFiltro('todos')} >TODOS</button>
+            {categoriasLista.map(cat => {
+              const catLowerCase = cat.nome.toLowerCase();
+              return (
+                <button key={cat.id} className={`cat-btn ${filtro === catLowerCase ? 'cat-btn-active' : ''}`} onClick={() => setFiltro(catLowerCase)} >
+                  {cat.nome.toUpperCase()}
+                </button>
+              );
+            })}
           </div>
         </Container>
       </div>
 
-      {/* BARRA DE BENEFÍCIOS */}
-      <div className="bg-light py-4 mb-5">
+      <div className="bg-light py-4 mb-4 mb-md-5 border-bottom">
         <Container>
-          <Row className="gy-4 justify-content-center">
-            
-            <Col xs={6} lg={3} className="d-flex justify-content-center">
-              <div className="d-flex align-items-center gap-3 text-start">
-                <FaTruck size={26} className="text-dark" />
-                <div>
-                  <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Envios Ágeis</h6>
-                  <small className="text-muted d-none d-md-block" style={{ fontSize: '0.7rem' }}>Postagem em até 24h</small>
-                </div>
+          <Row className="gy-3 justify-content-center px-2">
+            <Col xs={6} lg={3} className="d-flex align-items-center gap-2 gap-md-3">
+              <FaTruck size={22} className="text-dark flex-shrink-0" />
+              <div>
+                <h6 className="mb-0 fw-bold text-uppercase benefit-title">Envios Ágeis</h6>
+                <small className="text-muted d-none d-md-block benefit-desc">Postagem em até 24h</small>
               </div>
             </Col>
-
-            <Col xs={6} lg={3} className="d-flex justify-content-center">
-              <div className="d-flex align-items-center gap-3 text-start">
-                <FaCreditCard size={26} className="text-dark" />
-                <div>
-                  <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Pagamento Parcelado</h6>
-                  <small className="text-muted d-none d-md-block" style={{ fontSize: '0.7rem' }}>Parc. Min R$ 50</small>
-                </div>
+            <Col xs={6} lg={3} className="d-flex align-items-center gap-2 gap-md-3">
+              <FaCreditCard size={22} className="text-dark flex-shrink-0" />
+              <div>
+                <h6 className="mb-0 fw-bold text-uppercase benefit-title">Parcelamento</h6>
+                <small className="text-muted d-none d-md-block benefit-desc">Parc. Min R$ 50</small>
               </div>
             </Col>
-
-            <Col xs={6} lg={3} className="d-flex justify-content-center">
-              <div className="d-flex align-items-center gap-3 text-start">
-                <FaGift size={26} className="text-dark" />
-                <div>
-                  <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Frete Grátis</h6>
-                  <small className="text-muted d-none d-md-block" style={{ fontSize: '0.7rem' }}>Acima de R$ 300</small>
-                </div>
+            <Col xs={6} lg={3} className="d-flex align-items-center gap-2 gap-md-3">
+              <FaGift size={22} className="text-dark flex-shrink-0" />
+              <div>
+                <h6 className="mb-0 fw-bold text-uppercase benefit-title">Frete Grátis</h6>
+                <small className="text-muted d-none d-md-block benefit-desc">Acima de R$ 300</small>
               </div>
             </Col>
-
-            <Col xs={6} lg={3} className="d-flex justify-content-center">
-              <div className="d-flex align-items-center gap-3 text-start">
-                <FaGem size={26} className="text-dark" />
-                <div>
-                  <h6 className="mb-0 fw-bold text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>Prata 925 Legítima</h6>
-                  <small className="text-muted d-none d-md-block" style={{ fontSize: '0.7rem' }}>Garantia de qualidade</small>
-                </div>
+            <Col xs={6} lg={3} className="d-flex align-items-center gap-2 gap-md-3">
+              <FaGem size={22} className="text-dark flex-shrink-0" />
+              <div>
+                <h6 className="mb-0 fw-bold text-uppercase benefit-title">Prata 925</h6>
+                <small className="text-muted d-none d-md-block benefit-desc">Garantia vitalícia</small>
               </div>
             </Col>
-
           </Row>
         </Container>
       </div>
 
-      <Container className="py-2 py-md-4 px-3 px-md-auto">
-        
-        {/* DESTAQUES */}
+      <Container className="px-2 px-md-auto mb-5">
         {filtro === 'todos' && destaques.length > 0 && (
-          <div className="mb-5 pb-2">
-            <h3 className="text-center mb-4 fs-2" style={{fontFamily: 'Playfair Display'}}>Destaques</h3>
+          <div className="mb-5">
+            <h3 className="text-center mb-3 mb-md-4 section-title">Destaques</h3>
             <div className="divider-custom mb-4"></div>
-            <Row className="g-2 g-md-4">
-              {destaquesExibidos.map(product => <ProductCard key={product.id} product={product} />)}
+            <Row className="g-1 g-md-4 mx-0">
+              {destaques.slice(0, 4).map(product => <ProductCard key={product.id} product={product} />)}
             </Row>
             {destaques.length > 4 && (
               <div className="text-center mt-3">
-                <Button as={Link} to="/colecao/destaques" variant="outline-dark" className="px-4 py-2 rounded-0 text-uppercase" style={{fontSize: '0.8rem', letterSpacing: '1px'}}>
-                  Ver Todos os Destaques
-                </Button>
+                <Button as={Link} to="/colecao/destaques" variant="outline-dark" className="px-4 py-2 rounded-0 text-uppercase btn-ver-mais">Ver Todos</Button>
               </div>
             )}
           </div>
         )}
 
-        {/* NOVIDADES */}
-        {filtro === 'todos' && novidades.length > 0 && (
-          <div className="mb-5 pb-2">
-            <div className="text-center mb-4">
-              <span className="badge bg-dark text-uppercase letter-spacing-2 p-2 mb-2 rounded-0">New In</span>
-              <h3 className="fs-2" style={{fontFamily: 'Playfair Display'}}>Lançamentos</h3>
-            </div>
-            <Row className="g-2 g-md-4">
-              {novidadesExibidas.map(product => <ProductCard key={product.id} product={product} />)}
-            </Row>
-            {novidades.length > 4 && (
-              <div className="text-center mt-3">
-                <Button as={Link} to="/colecao/novidades" variant="outline-dark" className="px-4 py-2 rounded-0 text-uppercase" style={{fontSize: '0.8rem', letterSpacing: '1px'}}>
-                  Ver Todas as Novidades
-                </Button>
-              </div>
-            )}
-            <hr className="my-5 opacity-25" />
-          </div>
-        )}
-
-        {/* CATÁLOGO */}
-        <div className="text-center mb-4">
-          <h2 className="fs-2" style={{fontFamily: 'Playfair Display'}}>
+        <div className="text-center mb-4 mt-5">
+          <h2 className="section-title">
             {filtro === 'todos' ? 'Coleção Completa' : filtro.charAt(0).toUpperCase() + filtro.slice(1)}
           </h2>
           <div className="divider-custom"></div>
         </div>
         
-        <Row className="g-2 g-md-4">
-          {catalogoExibido.map(product => <ProductCard key={product.id} product={product} />)}
+        <Row className="g-1 g-md-4 mx-0">
+          {produtosCatalogo.slice(0, 8).map(product => <ProductCard key={product.id} product={product} />)}
           {produtosCatalogo.length === 0 && (
-            <div className="text-center py-5 w-100 text-muted">Nenhuma peça encontrada nesta categoria.</div>
+            <div className="text-center py-5 w-100 text-muted">Nenhuma peça nesta categoria.</div>
           )}
         </Row>
 
         {produtosCatalogo.length > 8 && (
           <div className="text-center mt-4 mb-5">
-            <Button as={Link} to={`/colecao/${filtro}`} variant="dark" className="px-5 py-2 rounded-0 text-uppercase" style={{fontSize: '0.8rem', letterSpacing: '1px'}}>
-              Ver Mais Peças ({produtosCatalogo.length})
-            </Button>
+            <Button as={Link} to={`/colecao/${filtro}`} variant="dark" className="px-5 py-2 rounded-0 text-uppercase fw-bold shadow-sm">Ver Mais Peças</Button>
           </div>
         )}
       </Container>
@@ -631,40 +536,24 @@ function CollectionPage() {
 
   if (loading) return <div className="text-center py-5"><Spinner animation="border" /></div>;
 
-  let filtered = [];
-  let title = "";
-
-  if (tipo === 'destaques') {
-    filtered = products.filter(p => p.destaque === true || (p.preco_antigo && p.preco < p.preco_antigo));
-    title = "Destaques e Promoções";
-  } else if (tipo === 'novidades') {
-    filtered = products.filter(p => p.novidade === true);
-    title = "Lançamentos";
-  } else if (tipo === 'todos') {
-    filtered = products;
-    title = "Coleção Completa";
-  } else {
-    filtered = products.filter(p => p.categoria === tipo);
-    title = `${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
-  }
+  let filtered = products;
+  let title = "Coleção Completa";
+  if (tipo === 'destaques') { filtered = products.filter(p => p.destaque || (p.preco_antigo && p.preco < p.preco_antigo)); title = "Destaques"; }
+  else if (tipo === 'novidades') { filtered = products.filter(p => p.novidade); title = "Lançamentos"; }
+  else if (tipo !== 'todos') { filtered = products.filter(p => p.categoria === tipo); title = `${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`; }
 
   return (
-    <Container className="py-4 py-md-5 px-3 px-md-auto">
-      <Link to="/" className="btn btn-link text-secondary text-decoration-none mb-3 ps-0 d-inline-flex align-items-center" style={{fontSize: '0.9rem'}}>
-        <FaArrowLeft className="me-2" /> Voltar para a loja
+    <Container className="py-4 px-2 px-md-auto min-vh-100">
+      <Link to="/" className="btn btn-link text-secondary text-decoration-none mb-3 ps-2 d-inline-flex align-items-center small">
+        <FaArrowLeft className="me-2" /> Voltar
       </Link>
-      
-      <div className="text-center mb-4 mb-md-5">
-        <h2 className="fs-1" style={{fontFamily: 'Playfair Display'}}>{title}</h2>
+      <div className="text-center mb-4">
+        <h2 className="section-title">{title}</h2>
         <div className="divider-custom"></div>
         <p className="text-muted small">{filtered.length} peças encontradas</p>
       </div>
-      
-      <Row className="g-2 g-md-4">
+      <Row className="g-1 g-md-4 mx-0">
         {filtered.map(product => <ProductCard key={product.id} product={product} />)}
-        {filtered.length === 0 && (
-          <div className="text-center py-5 w-100 text-muted">Nenhuma peça encontrada.</div>
-        )}
       </Row>
     </Container>
   );
@@ -674,52 +563,41 @@ function CollectionPage() {
 function Footer() {
   const currentYear = new Date().getFullYear();
   return (
-    <footer className="bg-white border-top pt-5 pb-3 mt-auto">
+    <footer className="bg-white border-top pt-4 pt-md-5 pb-3 mt-auto">
       <Container>
-        <Row className="gy-4 gy-md-5 text-center text-md-start">
+        <Row className="gy-4 text-center text-md-start">
           <Col lg={3} md={6}>
-            <h6 className="fw-bold mb-3" style={{ fontSize: '0.9rem', letterSpacing: '1px' }}>SIGA-NOS</h6>
+            <h6 className="fw-bold mb-3 footer-title">SIGA-NOS</h6>
             <div className="d-flex gap-2 justify-content-center justify-content-md-start">
-              <a href="https://instagram.com/floressiapratas" target="_blank" rel="noopener noreferrer" className="btn btn-dark btn-sm rounded-circle d-flex align-items-center justify-content-center p-0" style={{ width: '35px', height: '35px' }}>
-                <FaInstagram size={18} color="white" />
-              </a>
-              <a href="https://tiktok.com/@floressiapratas" target="_blank" rel="noopener noreferrer" className="btn btn-dark btn-sm rounded-circle d-flex align-items-center justify-content-center p-0" style={{ width: '35px', height: '35px' }}>
-                <FaTiktok size={16} color="white" />
-              </a>
+              <a href="#" className="btn btn-dark btn-sm rounded-circle d-flex align-items-center justify-content-center p-0" style={{ width: '35px', height: '35px' }}><FaInstagram size={18} /></a>
+              <a href="#" className="btn btn-dark btn-sm rounded-circle d-flex align-items-center justify-content-center p-0" style={{ width: '35px', height: '35px' }}><FaTiktok size={16} /></a>
             </div>
           </Col>
-          <Col lg={3} md={6} sm={6}>
-            <h6 className="fw-bold mb-3" style={{ fontSize: '0.9rem', letterSpacing: '1px' }}>INSTITUCIONAL</h6>
-            <ul className="list-unstyled text-muted small" style={{ lineHeight: '2.2' }}>
+          <Col lg={3} md={6} xs={6}>
+            <h6 className="fw-bold mb-3 footer-title">INSTITUCIONAL</h6>
+            <ul className="list-unstyled text-muted small lh-lg">
               <li><a href="#" className="text-decoration-none text-secondary">Quem Somos</a></li>
               <li><a href="#" className="text-decoration-none text-secondary">Trocas e Devoluções</a></li>
             </ul>
           </Col>
-          <Col lg={3} md={6} sm={6}>
-            <h6 className="fw-bold mb-3" style={{ fontSize: '0.9rem', letterSpacing: '1px' }}>ATENDIMENTO</h6>
-            <ul className="list-unstyled text-muted small" style={{ lineHeight: '1.8' }}>
-              <li className="mb-2"><FaWhatsapp className="me-2 text-success" /> (64) 99264-1367</li>
-              <li className="mb-2"><FaRegEnvelope className="me-2" /> floressiapratas@gmail.com</li>
+          <Col lg={3} md={6} xs={6}>
+            <h6 className="fw-bold mb-3 footer-title">ATENDIMENTO</h6>
+            <ul className="list-unstyled text-muted small lh-lg text-start text-md-start px-3 px-md-0">
+              <li><FaWhatsapp className="me-1 text-success" /> (64) 99264-1367</li>
+              <li className="text-truncate"><FaRegEnvelope className="me-1" /> floressia@gmail.com</li>
             </ul>
           </Col>
           <Col lg={3} md={6}>
-             <h6 className="fw-bold mb-3" style={{ fontSize: '0.9rem', letterSpacing: '1px' }}>SEGURANÇA</h6>
-             <div className="d-flex gap-2 mb-3 justify-content-center justify-content-md-start">
-                 <FaCreditCard size={24} className="text-secondary"/>
-                 <FaBarcode size={24} className="text-secondary"/>
-                 <FaGem size={24} className="text-secondary"/>
-             </div>
-              <div className="d-flex gap-2 justify-content-center justify-content-md-start">
-                 <div className="border px-2 py-1 rounded bg-light small d-inline-flex align-items-center"><FaLock className="text-success me-1"/> Site Seguro</div>
+             <h6 className="fw-bold mb-3 footer-title">SEGURANÇA</h6>
+             <div className="d-flex gap-2 mb-2 justify-content-center justify-content-md-start">
+                 <FaCreditCard size={24} className="text-secondary"/><FaBarcode size={24} className="text-secondary"/><FaGem size={24} className="text-secondary"/>
              </div>
           </Col>
         </Row>
-        <hr className="my-4" />
-        <Row className="align-items-center gy-3">
-          <Col md={6} className="text-center text-md-start">
-            <small className="text-muted">© {currentYear} <strong>Floressia Pratas</strong>. Todos os direitos reservados.</small>
-          </Col>
-        </Row>
+        <hr className="my-3 opacity-25" />
+        <div className="text-center small text-muted">
+          © {currentYear} <strong>Floressia Pratas</strong>. Todos os direitos reservados.
+        </div>
       </Container>
     </footer>
   );
@@ -727,47 +605,95 @@ function Footer() {
 
 // --- ESTRUTURA E ESTILOS CSS GLOBAIS ---
 function StoreLayout() {
+  const [searchTerm, setSearchTerm] = useState('');
+
   return (
     <div className="d-flex flex-column min-vh-100">
       <style>{`
-        /* Hover nos cards para subir levemente */
-        .product-card:hover .product-img { transform: scale(1.05); }
+        body { background-color: #fafafa; }
+        .letter-spacing-1 { letter-spacing: 1px; }
+        .divider-custom { width: 50px; height: 2px; background-color: #212529; margin: 0 auto; }
         
-        /* Menu de categorias rolável no celular */
-        .category-scroll { 
-          overflow-x: auto; 
-          white-space: nowrap; 
-          -webkit-overflow-scrolling: touch; 
-          scrollbar-width: none; 
-        }
+        .category-scroll { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 5px; }
         .category-scroll::-webkit-scrollbar { display: none; }
-        
-        /* Tamanho do logo no celular vs PC */
+
+        /* ESTILO DA LOGO */
+        .logo-img { max-height: 65px; width: auto; object-fit: contain; }
+
+        /* ESTILO DA BARRA DE BUSCA */
+        .search-input { font-size: 0.85rem; width: 100px; transition: width 0.3s ease; }
+        .search-input:focus { width: 180px; outline: none; box-shadow: none; }
+        .search-input::placeholder { color: #adb5bd; }
+
+        .cat-btn {
+          background-color: #fff;
+          border: 1px solid #dee2e6;
+          color: #6c757d;
+          border-radius: 50rem;
+          padding: 6px 20px;
+          font-size: 0.75rem;
+          letter-spacing: 1px;
+          flex-shrink: 0;
+          transition: all 0.3s ease;
+        }
+        .cat-btn:hover { border-color: #212529; color: #212529; }
+        .cat-btn.cat-btn-active { background-color: #000; border-color: #000; color: #fff; font-weight: 600; }
+
+        .product-image-container { position: relative; aspect-ratio: 1/1; width: 100%; display: flex; align-items: center; justify-content: center; }
+        .product-img { object-fit: cover; width: 100%; height: 100%; transition: transform 0.3s ease; }
+        @media (hover: hover) { .product-card:hover .product-img { transform: scale(1.05); } }
+
+        /* Responsividade Mobile */
         @media (max-width: 768px) {
-          .logo-img { max-height: 40px !important; }
+          .logo-img { max-height: 35px !important; }
+          .nav-icon-link { padding: 5px !important; }
+          .cart-badge { font-size: 0.55rem !important; transform: translate(-30%, -30%) !important; }
+          .banner-home { min-height: 150px; object-fit: cover; }
+          .section-title { font-size: 1.6rem !important; }
+          .benefit-title { font-size: 0.7rem !important; }
+          .footer-title { font-size: 0.8rem !important; }
+          .product-card .card-body { padding: 8px !important; }
+          .product-title { font-size: 0.8rem !important; margin-bottom: 4px !important; }
+          .price-old { font-size: 0.65rem !important; }
+          .price-current { font-size: 0.9rem !important; }
+          .add-btn { font-size: 0.65rem !important; padding: 6px 0 !important; letter-spacing: 0px !important; }
+          .promo-badge { font-size: 0.5rem !important; padding: 3px 5px !important; }
+          .fav-btn { padding: 3px !important; margin: 4px !important; }
+          .fav-icon { font-size: 14px !important; }
+          .cat-btn { font-size: 0.7rem; padding: 5px 16px; }
+          .modal-body { padding: 15px !important; }
+          .table-responsive { border: 0 !important; }
+          .cart-offcanvas { width: 85% !important; }
+
+          /* Busca no Mobile fica mais compacta */
+          .search-input { width: 70px; font-size: 0.75rem;}
+          .search-input:focus { width: 110px; }
+        }
+        @media (min-width: 769px) {
+          .section-title { font-size: 2.2rem !important; }
+          .product-title { font-size: 1rem !important; }
+          .price-current { font-size: 1.1rem !important; }
+          .cart-offcanvas { width: 400px !important; }
         }
       `}</style>
       
-      <Header />
-      <Outlet /> 
+      <Header searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+      
+      <Outlet context={{ searchTerm }} /> 
+      
       <Footer />
     </div>
   );
 }
 
-// --- ROTA PROTEGIDA DO ADMIN ---
+// --- ROTA PROTEGIDA ---
 function RotaProtegida({ children }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); setLoading(false); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { setSession(session); });
     return () => subscription.unsubscribe();
   }, []);
 
@@ -789,21 +715,9 @@ export default function App() {
             <Route path="/colecao/:tipo" element={<CollectionPage />} />
           </Route>
           <Route path="/login" element={<Login />} />
-          <Route path="/admin" element={
-            <RotaProtegida>
-              <Admin />
-            </RotaProtegida>
-          } />
-          <Route path="/admin/fornecedores" element={
-            <RotaProtegida>
-              <Fornecedores />
-            </RotaProtegida>
-          } />
-          <Route path="/admin/pedidos" element={
-            <RotaProtegida>
-              <AdminPedidos />
-            </RotaProtegida>
-          } />
+          <Route path="/admin" element={<RotaProtegida><Admin /></RotaProtegida>} />
+          <Route path="/admin/fornecedores" element={<RotaProtegida><Fornecedores /></RotaProtegida>} />
+          <Route path="/admin/pedidos" element={<RotaProtegida><AdminPedidos /></RotaProtegida>} />
         </Routes>
         <ShoppingCart />
       </BrowserRouter>
