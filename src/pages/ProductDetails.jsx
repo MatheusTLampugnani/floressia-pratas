@@ -371,7 +371,7 @@ export default function ProductDetails() {
                 <Card className="h-100 shadow-sm border-0 position-relative rounded-0">
                   <Link to={`/produto/${rel.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                     <div className="bg-light" style={{ overflow: 'hidden', aspectRatio: '1/1' }}>
-                      <Card.Img variant="top" src={rel.imagem_url || "https://placehold.co/300"} className="rounded-0 h-100 w-100 object-fit-cover" style={{transition: 'transform 0.3s ease'}} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'} />
+                      <Card.Img variant="top" src={rel.imagem_url || "https://placehold.co/300"} className="rounded-0 h-100 w-100 object-fit-cover" style={{transition: 'transform 0.3s ease'}} />
                     </div>
                     <Card.Body className="text-center p-2 p-md-3">
                       <Card.Title style={{fontFamily: 'Playfair Display', fontSize: '0.9rem'}} className="text-truncate mb-1">{rel.nome}</Card.Title>
