@@ -172,7 +172,7 @@ export default function MinhaConta() {
           <Link to="/" className="text-decoration-none text-dark d-flex align-items-center fw-bold" style={{fontFamily: 'Playfair Display', fontSize: '1.1rem'}}>
             <FaArrowLeft className="me-2 fs-6 text-muted" /> <span className="d-none d-sm-inline">Voltar à Loja</span>
           </Link>
-          {user?.email === 'admin@floressia.com' && (
+          {user?.email === 'floressiapratas@gmail.com' && (
             <Button as={Link} to="/admin" variant="outline-dark" size="sm" className="rounded-0 fw-bold letter-spacing-1">PAINEL ADMIN</Button>
           )}
         </Container>

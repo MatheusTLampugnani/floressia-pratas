@@ -290,21 +290,30 @@ function ShoppingCart() {
   );
 }
 
-// --- MEGA HEADER (ESTILO KABUM) ---
+// --- HEADER ---
 function Header({ searchTerm, setSearchTerm }) {
   const { setShowCart, cartItems } = useCart();
   const [userName, setUserName] = useState(null);
+  const [userEmail, setUserEmail] = useState(null);
   const [categoriasLista, setCategoriasLista] = useState([]);
   const navigate = useNavigate();
   const cartSize = cartItems ? cartItems.length : 0;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) buscarNomeUsuario(session.user.id);
+      if (session) {
+        buscarNomeUsuario(session.user.id);
+        setUserEmail(session.user.email);
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) buscarNomeUsuario(session.user.id);
-      else setUserName(null);
+      if (session) {
+        buscarNomeUsuario(session.user.id);
+        setUserEmail(session.user.email);
+      } else {
+        setUserName(null);
+        setUserEmail(null);
+      }
     });
 
     async function fetchCategorias() {
@@ -328,8 +337,6 @@ function Header({ searchTerm, setSearchTerm }) {
 
   return (
     <header className="bg-white border-bottom shadow-sm sticky-top">
-      
-      {/* TIER 1: BARRA PRINCIPAL */}
       <div className="py-2 py-md-3">
         <Container className="d-flex align-items-center justify-content-between gap-3 gap-md-5">
           
@@ -362,11 +369,6 @@ function Header({ searchTerm, setSearchTerm }) {
             </Link>
 
             <div className="vr d-none d-md-block opacity-25" style={{height: '45px'}}></div>
-
-            {/* <Link to="/minha-conta" className="text-dark position-relative p-0 border-0 nav-icon-link d-none d-sm-flex flex-column align-items-center text-decoration-none hover-danger" title="Meus Favoritos">
-               <FaHeart className="fs-5 text-muted mb-1" />
-               <span className="d-none d-xl-block text-muted" style={{fontSize: '0.65rem'}}>Favoritos</span>
-            </Link> */}
             
             <Button variant="link" className="text-dark position-relative p-0 border-0 nav-icon-link d-flex flex-column align-items-center text-decoration-none" onClick={() => setShowCart(true)}>
               <div className="position-relative">
@@ -397,10 +399,8 @@ function Header({ searchTerm, setSearchTerm }) {
           </div>
       </div>
 
-      {/* TIER 2: MENU DE DEPARTAMENTOS (GLOBAL) */}
       <div className="bg-dark text-white d-none d-md-block">
         <Container>
-          {/* AQUI FOI ADICIONADO O justify-content-center PARA CENTRALIZAR TUDO */}
           <div className="d-flex align-items-center justify-content-center py-2 flex-wrap gap-2 gap-md-0" style={{fontSize: '0.85rem'}}>
             <Link to="/colecao/todos" className="text-white text-decoration-none fw-bold letter-spacing-1 d-flex align-items-center gap-2 me-md-4 departamento-link">
               <FaListUl /> TODAS AS JOIAS
@@ -432,7 +432,7 @@ function Header({ searchTerm, setSearchTerm }) {
   );
 }
 
-// --- PÁGINA INICIAL (VITRINE E BUSCA) ---
+// --- PÁGINA INICIAL ---
 function Store() {
   const [products, setProducts] = useState([]);
   const [filtro, setFiltro] = useState('todos');
@@ -499,7 +499,6 @@ function Store() {
           </div>
         </Container> */}
         
-        {/* MENU RÁPIDO SÓ NO CELULAR */}
         <Container className="d-md-none">
           <div className="category-scroll d-flex gap-2 pb-2 px-2 justify-content-start">
             <button className={`cat-btn ${filtro === 'todos' ? 'cat-btn-active' : ''}`} onClick={() => setFiltro('todos')} >TODOS</button>
@@ -518,28 +517,24 @@ function Store() {
       <div className="bg-light py-4 mb-4 mb-md-5 border-bottom d-none d-md-block">
         <Container>
           <Row className="gy-3 justify-content-center px-2">
-            <Col xs={6} lg={3} className="d-flex align-items-center gap-2 gap-md-3">
+            
+            <Col xs={12} md={4} className="d-flex justify-content-center align-items-center gap-2 gap-md-3">
               <FaTruck size={22} className="text-dark flex-shrink-0" />
               <div>
                 <h6 className="mb-0 fw-bold text-uppercase benefit-title">Envios Ágeis</h6>
-                <small className="text-muted d-none d-md-block benefit-desc">Postagem em até 24h</small>
+                <small className="text-muted d-none d-md-block benefit-desc">Envios para todo Brasil</small>
               </div>
             </Col>
-            <Col xs={6} lg={3} className="d-flex align-items-center gap-2 gap-md-3">
+            
+            <Col xs={12} md={4} className="d-flex justify-content-center align-items-center gap-2 gap-md-3">
               <FaCreditCard size={22} className="text-dark flex-shrink-0" />
               <div>
                 <h6 className="mb-0 fw-bold text-uppercase benefit-title">Parcelamento</h6>
                 <small className="text-muted d-none d-md-block benefit-desc">Parc. Min R$ 50</small>
               </div>
             </Col>
-            <Col xs={6} lg={3} className="d-flex align-items-center gap-2 gap-md-3">
-              <FaGift size={22} className="text-dark flex-shrink-0" />
-              <div>
-                <h6 className="mb-0 fw-bold text-uppercase benefit-title">Frete Grátis</h6>
-                <small className="text-muted d-none d-md-block benefit-desc">Acima de R$ 300</small>
-              </div>
-            </Col>
-            <Col xs={6} lg={3} className="d-flex align-items-center gap-2 gap-md-3">
+            
+            <Col xs={12} md={4} className="d-flex justify-content-center align-items-center gap-2 gap-md-3">
               <FaGem size={22} className="text-dark flex-shrink-0" />
               <div>
                 <h6 className="mb-0 fw-bold text-uppercase benefit-title">Prata 925</h6>
@@ -689,7 +684,6 @@ function StoreLayout() {
         .category-scroll { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 5px; }
         .category-scroll::-webkit-scrollbar { display: none; }
 
-        /* ESTILO DA LOGO E HEADER TIER 2 */
         .logo-img { max-height: 65px; width: auto; object-fit: contain; }
         
         .departamento-link { opacity: 0.8; transition: opacity 0.2s; }
@@ -713,7 +707,7 @@ function StoreLayout() {
 
         .product-image-container { position: relative; aspect-ratio: 1/1; width: 100%; display: flex; align-items: center; justify-content: center; }
         .product-img { object-fit: cover; width: 100%; height: 100%; transition: transform 0.3s ease; }
-        @media (hover: hover) { .product-card:hover .product-img { transform: scale(1.05); } }
+        
 
         @media (max-width: 768px) {
           .logo-img { max-height: 35px !important; }
