@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, Outlet, useParams, Navigate, useNavigate, useOutletContext } from 'react-router-dom';
 import { Container, Navbar, Nav, Row, Col, Card, Button, Offcanvas, Badge, Spinner, Alert, Form, Modal } from 'react-bootstrap';
-import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft, FaUser, FaHeart, FaRegHeart, FaMapMarkerAlt, FaSearch } from 'react-icons/fa';
+import { FaShoppingCart, FaWhatsapp, FaTrash, FaInstagram, FaTiktok, FaTruck, FaCreditCard, FaGift, FaGem, FaBarcode, FaLock, FaRegEnvelope, FaArrowLeft, FaUser, FaHeart, FaRegHeart, FaMapMarkerAlt, FaSearch, FaListUl } from 'react-icons/fa';
 import { supabase } from './supabase';
 import { CartProvider, useCart } from './context/CartContext';
 import Admin from './pages/Admin';
@@ -290,10 +290,11 @@ function ShoppingCart() {
   );
 }
 
-// --- CABEÇALHO ---
+// --- MEGA HEADER (ESTILO KABUM) ---
 function Header({ searchTerm, setSearchTerm }) {
   const { setShowCart, cartItems } = useCart();
   const [userName, setUserName] = useState(null);
+  const [categoriasLista, setCategoriasLista] = useState([]);
   const navigate = useNavigate();
   const cartSize = cartItems ? cartItems.length : 0;
 
@@ -305,6 +306,13 @@ function Header({ searchTerm, setSearchTerm }) {
       if (session) buscarNomeUsuario(session.user.id);
       else setUserName(null);
     });
+
+    async function fetchCategorias() {
+      const { data } = await supabase.from('categorias').select('*').order('nome');
+      if (data) setCategoriasLista(data);
+    }
+    fetchCategorias();
+
     return () => subscription.unsubscribe();
   }, []);
 
@@ -313,58 +321,122 @@ function Header({ searchTerm, setSearchTerm }) {
     if (data && data.nome) setUserName(data.nome.split(' ')[0]);
   }
 
-  return (
-    <Navbar bg="white" expand="lg" className="shadow-sm sticky-top py-2">
-      <Container className="position-relative d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap">
-        
-        {/* LOGO */}
-        <Navbar.Brand as={Link} to="/" className="m-0" onClick={() => setSearchTerm('')}>
-          <img src={logoMarca} alt="Floréssia Pratas" className="logo-img" />
-        </Navbar.Brand>
-  
-        <Nav className="d-flex flex-row align-items-center gap-2 gap-md-4 ms-auto">
-          <div className="d-flex align-items-center bg-light rounded-pill px-2 py-1 border border-secondary-subtle">
-            <FaSearch className="text-muted ms-2 flex-shrink-0" size={13} />
-            <Form.Control
-              type="text"
-              placeholder="Buscar..."
-              className="border-0 bg-transparent shadow-none px-2 search-input"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                if (window.location.pathname !== '/') navigate('/');
-              }}
-            />
-          </div>
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+    if (window.location.pathname !== '/') navigate('/'); 
+  };
 
-          <Link to="/minha-conta" className="text-dark d-flex align-items-center gap-2 text-decoration-none nav-icon-link">
-            <FaUser className="fs-5" />
-            <span className="d-none d-md-block small fw-bold text-uppercase letter-spacing-1">
-              {userName ? `Olá, ${userName}` : 'Entrar'}
-            </span>
+  return (
+    <header className="bg-white border-bottom shadow-sm sticky-top">
+      
+      {/* TIER 1: BARRA PRINCIPAL */}
+      <div className="py-2 py-md-3">
+        <Container className="d-flex align-items-center justify-content-between gap-3 gap-md-5">
+          
+          <Link to="/" onClick={() => setSearchTerm('')} className="flex-shrink-0 text-decoration-none">
+            <img src={logoMarca} alt="Floréssia Pratas" className="logo-img" />
           </Link>
           
-          <Button variant="link" className="text-dark position-relative p-0 border-0 nav-icon-link" onClick={() => setShowCart(true)}>
-            <FaShoppingCart className="fs-5" />
-            {cartSize > 0 && (
-              <Badge bg="dark" className="position-absolute top-0 start-100 translate-middle rounded-circle cart-badge">
-                {cartSize}
-              </Badge>
-            )}
-          </Button>
-        </Nav>
+          <div className="flex-grow-1 d-none d-md-flex align-items-center bg-light rounded-pill px-3 py-2 border border-secondary-subtle" style={{ maxWidth: '700px' }}>
+            <Form.Control
+              type="text"
+              placeholder="Busque por joias, colares, anéis, pratas..."
+              className="border-0 bg-transparent shadow-none px-2 w-100"
+              value={searchTerm}
+              onChange={handleSearch}
+            />
+            <Button variant="dark" className="rounded-pill p-0 d-flex align-items-center justify-content-center flex-shrink-0" style={{width: '35px', height: '35px'}}>
+              <FaSearch size={14} />
+            </Button>
+          </div>
 
-      </Container>
-    </Navbar>
+          <div className="d-flex align-items-center gap-3 gap-md-4 flex-shrink-0">
+            <Link to="/minha-conta" className="text-dark d-flex align-items-center gap-2 text-decoration-none nav-icon-link">
+              <FaUser className="fs-4 text-muted" />
+              <div className="d-none d-lg-flex flex-column lh-1 text-start">
+                <span className="small text-muted" style={{fontSize: '0.7rem'}}>Minha Conta</span>
+                <strong className="text-uppercase letter-spacing-1 text-dark" style={{fontSize: '0.8rem'}}>
+                  {userName ? `Olá, ${userName}` : 'Entrar / Cadastrar'}
+                </strong>
+              </div>
+            </Link>
+
+            <div className="vr d-none d-md-block opacity-25" style={{height: '45px'}}></div>
+
+            {/* <Link to="/minha-conta" className="text-dark position-relative p-0 border-0 nav-icon-link d-none d-sm-flex flex-column align-items-center text-decoration-none hover-danger" title="Meus Favoritos">
+               <FaHeart className="fs-5 text-muted mb-1" />
+               <span className="d-none d-xl-block text-muted" style={{fontSize: '0.65rem'}}>Favoritos</span>
+            </Link> */}
+            
+            <Button variant="link" className="text-dark position-relative p-0 border-0 nav-icon-link d-flex flex-column align-items-center text-decoration-none" onClick={() => setShowCart(true)}>
+              <div className="position-relative">
+                <FaShoppingCart className="fs-4 text-dark mb-1" />
+                {cartSize > 0 && (
+                  <Badge bg="danger" className="position-absolute top-0 start-100 translate-middle rounded-circle cart-badge px-2 py-1">
+                    {cartSize}
+                  </Badge>
+                )}
+              </div>
+              <span className="d-none d-xl-block text-dark fw-bold" style={{fontSize: '0.65rem'}}>Sacola</span>
+            </Button>
+          </div>
+        </Container>
+      </div>
+
+      <div className="d-md-none px-3 pb-3">
+         <div className="d-flex align-items-center bg-light rounded-pill px-3 py-2 border border-secondary-subtle w-100">
+            <Form.Control
+              type="text"
+              placeholder="O que você procura hoje?"
+              className="border-0 bg-transparent shadow-none px-2 w-100"
+              value={searchTerm}
+              onChange={handleSearch}
+              style={{fontSize: '0.9rem'}}
+            />
+            <FaSearch className="text-muted flex-shrink-0" size={16} />
+          </div>
+      </div>
+
+      {/* TIER 2: MENU DE DEPARTAMENTOS (GLOBAL) */}
+      <div className="bg-dark text-white d-none d-md-block">
+        <Container>
+          {/* AQUI FOI ADICIONADO O justify-content-center PARA CENTRALIZAR TUDO */}
+          <div className="d-flex align-items-center justify-content-center py-2 flex-wrap gap-2 gap-md-0" style={{fontSize: '0.85rem'}}>
+            <Link to="/colecao/todos" className="text-white text-decoration-none fw-bold letter-spacing-1 d-flex align-items-center gap-2 me-md-4 departamento-link">
+              <FaListUl /> TODAS AS JOIAS
+            </Link>
+            
+            <div className="vr bg-light opacity-50 me-md-4 d-none d-md-block"></div>
+            
+            <div className="d-flex gap-3 gap-md-4 flex-wrap justify-content-center">
+              <Link to="/colecao/destaques" className="text-white text-decoration-none letter-spacing-1 departamento-link">
+                DESTAQUES
+              </Link>
+              <Link to="/colecao/novidades" className="text-warning fw-bold text-decoration-none letter-spacing-1 departamento-link">
+                LANÇAMENTOS
+              </Link>
+              {categoriasLista.map(cat => (
+                <Link 
+                  key={cat.id} 
+                  to={`/colecao/${cat.nome.toLowerCase()}`} 
+                  className="text-light text-decoration-none text-uppercase letter-spacing-1 departamento-link"
+                >
+                  {cat.nome}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </Container>
+      </div>
+    </header>
   );
 }
 
-// --- PÁGINA INICIAL ---
+// --- PÁGINA INICIAL (VITRINE E BUSCA) ---
 function Store() {
   const [products, setProducts] = useState([]);
   const [filtro, setFiltro] = useState('todos');
   const [categoriasLista, setCategoriasLista] = useState([]);
-  
   const { searchTerm } = useOutletContext();
 
   useEffect(() => {
@@ -405,7 +477,7 @@ function Store() {
             <div className="text-center py-5 w-100 text-muted d-flex flex-column align-items-center">
               <FaSearch size={40} className="mb-3 opacity-25" />
               <h5 className="fw-normal">Nenhuma joia encontrada com esse nome.</h5>
-              <p className="small">Tente buscar por termos mais simples, como "Colar" ou "Zircônia".</p>
+              <p className="small">Tente buscar por termos mais simples, como "Colar" ou "Prata".</p>
             </div>
           )}
         </Row>
@@ -414,22 +486,22 @@ function Store() {
   }
 
   const destaques = products.filter(p => p.destaque === true || (p.preco_antigo && p.preco < p.preco_antigo));
-  const novidades = products.filter(p => p.novidade === true);
   const produtosCatalogo = filtro === 'todos' ? products : products.filter(p => p.categoria === filtro);
 
   return (
     <>
       <div className="bg-light pb-2 mb-0 border-bottom">
-        <Container className="px-0 px-md-3">
+        {/* <Container className="px-0 px-md-3">
           <div className="w-100 mb-3 mb-md-4">
             <Link to="/colecao/todos" className="d-block">
-              {/* <img src={inauguracaoBanner} alt="Grande Inauguração" className="w-100 img-fluid banner-home" /> */}
+              <img src={inauguracaoBanner} alt="Grande Inauguração" className="w-100 img-fluid banner-home" />
             </Link>
           </div>
-        </Container>
+        </Container> */}
         
-        <Container>
-          <div className="category-scroll d-flex gap-2 pb-2 px-2 px-md-0 justify-content-start justify-content-md-center">
+        {/* MENU RÁPIDO SÓ NO CELULAR */}
+        <Container className="d-md-none">
+          <div className="category-scroll d-flex gap-2 pb-2 px-2 justify-content-start">
             <button className={`cat-btn ${filtro === 'todos' ? 'cat-btn-active' : ''}`} onClick={() => setFiltro('todos')} >TODOS</button>
             {categoriasLista.map(cat => {
               const catLowerCase = cat.nome.toLowerCase();
@@ -443,7 +515,7 @@ function Store() {
         </Container>
       </div>
 
-      <div className="bg-light py-4 mb-4 mb-md-5 border-bottom">
+      <div className="bg-light py-4 mb-4 mb-md-5 border-bottom d-none d-md-block">
         <Container>
           <Row className="gy-3 justify-content-center px-2">
             <Col xs={6} lg={3} className="d-flex align-items-center gap-2 gap-md-3">
@@ -480,7 +552,7 @@ function Store() {
 
       <Container className="px-2 px-md-auto mb-5">
         {filtro === 'todos' && destaques.length > 0 && (
-          <div className="mb-5">
+          <div className="mb-5 mt-4 mt-md-0">
             <h3 className="text-center mb-3 mb-md-4 section-title">Destaques</h3>
             <div className="divider-custom mb-4"></div>
             <Row className="g-1 g-md-4 mx-0">
@@ -596,7 +668,7 @@ function Footer() {
         </Row>
         <hr className="my-3 opacity-25" />
         <div className="text-center small text-muted">
-          © {currentYear} <strong>Floressia Pratas</strong>. Todos os direitos reservados.
+          © {currentYear} <strong>Floréssia Pratas</strong>. Todos os direitos reservados.
         </div>
       </Container>
     </footer>
@@ -617,13 +689,13 @@ function StoreLayout() {
         .category-scroll { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 5px; }
         .category-scroll::-webkit-scrollbar { display: none; }
 
-        /* ESTILO DA LOGO */
+        /* ESTILO DA LOGO E HEADER TIER 2 */
         .logo-img { max-height: 65px; width: auto; object-fit: contain; }
-
-        /* ESTILO DA BARRA DE BUSCA */
-        .search-input { font-size: 0.85rem; width: 100px; transition: width 0.3s ease; }
-        .search-input:focus { width: 180px; outline: none; box-shadow: none; }
-        .search-input::placeholder { color: #adb5bd; }
+        
+        .departamento-link { opacity: 0.8; transition: opacity 0.2s; }
+        .departamento-link:hover { opacity: 1; text-decoration: underline !important; text-underline-offset: 4px; }
+        
+        .hover-danger:hover * { color: #dc3545 !important; }
 
         .cat-btn {
           background-color: #fff;
@@ -643,7 +715,6 @@ function StoreLayout() {
         .product-img { object-fit: cover; width: 100%; height: 100%; transition: transform 0.3s ease; }
         @media (hover: hover) { .product-card:hover .product-img { transform: scale(1.05); } }
 
-        /* Responsividade Mobile */
         @media (max-width: 768px) {
           .logo-img { max-height: 35px !important; }
           .nav-icon-link { padding: 5px !important; }
@@ -664,10 +735,6 @@ function StoreLayout() {
           .modal-body { padding: 15px !important; }
           .table-responsive { border: 0 !important; }
           .cart-offcanvas { width: 85% !important; }
-
-          /* Busca no Mobile fica mais compacta */
-          .search-input { width: 70px; font-size: 0.75rem;}
-          .search-input:focus { width: 110px; }
         }
         @media (min-width: 769px) {
           .section-title { font-size: 2.2rem !important; }
@@ -678,9 +745,7 @@ function StoreLayout() {
       `}</style>
       
       <Header searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
-      
       <Outlet context={{ searchTerm }} /> 
-      
       <Footer />
     </div>
   );

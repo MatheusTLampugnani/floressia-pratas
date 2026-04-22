@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Table, Badge, Button, Modal, Spinner, Form, Row, Col, Card, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaArrowLeft, FaBoxOpen, FaEye, FaTruck, FaMapMarkerAlt, FaUser, FaCheckCircle, FaWhatsapp } from 'react-icons/fa';
+import { FaArrowLeft, FaBoxOpen, FaEye, FaTruck, FaMapMarkerAlt, FaUser, FaCheckCircle, FaWhatsapp, FaTags, FaUsers, FaSignOutAlt } from 'react-icons/fa';
 import { supabase } from '../supabase';
 
 export default function AdminPedidos() {
@@ -77,6 +77,11 @@ export default function AdminPedidos() {
     }
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  }
+
   const getStatusColor = (status) => {
     if (status === 'Entregue') return 'success';
     if (status === 'Enviado') return 'primary';
@@ -86,103 +91,151 @@ export default function AdminPedidos() {
   };
 
   return (
-    <div style={{ backgroundColor: '#fafafa', minHeight: '100vh', paddingBottom: '4rem' }}>
+    <div style={{ backgroundColor: '#f4f6f8', minHeight: '100vh', paddingBottom: '5rem' }}>
+      
       <style>{`
+        .form-control:focus, .form-select:focus { border-color: #212529; box-shadow: none; background-color: #fff !important; }
+        .admin-table tbody tr { transition: background-color 0.2s ease; }
+        .admin-table tbody tr:hover { background-color: #f8f9fa; }
+        .table-container { box-shadow: 0 8px 30px rgba(0,0,0,0.04); border: 1px solid #eaeaea; border-radius: 12px !important; overflow: hidden; }
+        
+        .horizontal-scroll { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .horizontal-scroll::-webkit-scrollbar { display: none; }
+        
+        .admin-nav-link { color: #495057; font-weight: 600; text-decoration: none; padding: 8px 16px; border-radius: 6px; transition: all 0.2s ease; background: transparent; border: none; }
+        .admin-nav-link:hover { background-color: #f1f3f5; color: #000; }
+        
+        .admin-nav-link-danger { color: #dc3545; font-weight: 600; text-decoration: none; padding: 8px 16px; border-radius: 6px; transition: all 0.2s ease; background: transparent; border: none; }
+        .admin-nav-link-danger:hover { background-color: #fee2e2; color: #c92a2a; }
+
+        .modal-backdrop.show { opacity: 0.7; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); background-color: #000; }
+        .action-btn { transition: all 0.2s; border-radius: 6px !important;}
+        .action-btn:hover { transform: translateY(-2px); }
+
         @media (max-width: 768px) {
+          .admin-header-title { font-size: 1.6rem !important; }
+          .nav-btn-mobile { flex: 1 0 auto; font-size: 0.85rem !important; }
+          
+          /* Ajustes cirúrgicos na tabela para caber no celular */
           .table-mobile { font-size: 0.8rem !important; }
-          .table-mobile th, .table-mobile td { padding: 10px 8px !important; }
-          .badge-mobile { font-size: 0.65rem !important; padding: 4px 6px !important; }
-          .modal-body-mobile { padding: 15px !important; }
-          .admin-header { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+          .table-mobile th, .table-mobile td { padding: 10px 6px !important; vertical-align: middle; }
+          .badge-mobile { font-size: 0.65rem !important; padding: 5px 6px !important; }
+          .btn-acao-mobile { padding: 6px 10px !important; } /* Deixa o botão mais enxuto */
+          
+          .modal-body-mobile { padding: 20px 15px !important; }
+          .input-mobile { padding: 12px !important; font-size: 0.95rem !important; }
+          .btn-mobile-full { width: 100% !important; margin-top: 10px; padding: 12px !important; }
         }
       `}</style>
 
-      <div className="bg-white border-bottom shadow-sm py-3 mb-4 mb-md-5">
-        <Container className="d-flex justify-content-between align-items-center admin-header">
-          <Link to="/admin" className="text-decoration-none text-dark d-flex align-items-center fw-bold" style={{fontFamily: 'Playfair Display', fontSize: '1.2rem'}}>
-            <FaArrowLeft className="me-2 fs-6 text-muted" /> Voltar ao Catálogo
+      {/* --- CABEÇALHO --- */}
+      <div className="bg-white border-bottom shadow-sm sticky-top" style={{ zIndex: 1020 }}>
+        <Container className="d-flex flex-column flex-md-row justify-content-between align-items-md-center py-2 py-md-3 gap-3 gap-md-0">
+          <Link to="/" className="text-decoration-none text-dark d-flex align-items-center fw-bold text-nowrap" style={{fontFamily: 'Playfair Display', fontSize: '1.2rem', transition: 'opacity 0.2s'}} onMouseOver={e=>e.currentTarget.style.opacity=0.7} onMouseOut={e=>e.currentTarget.style.opacity=1}>
+            <FaArrowLeft className="me-2 fs-6 text-muted" /> Voltar à Loja
           </Link>
-          <div className="d-flex gap-2">
-            <Button as={Link} to="/" variant="outline-dark" size="sm" className="rounded-0">Ver Loja</Button>
+          
+          <div className="horizontal-scroll d-flex align-items-center gap-1 ms-auto w-100 w-md-auto pb-1 pb-md-0">
+            <Link to="/admin" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+              <FaTags size={14} className="text-secondary opacity-75"/> Categorias
+            </Link>
+            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link text-dark bg-light" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+              <FaBoxOpen size={14} className="text-dark"/> Pedidos
+            </button>
+            <Link to="/admin/fornecedores" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+              <FaUsers size={14} className="text-secondary opacity-75"/> Fornecedores
+            </Link>
+            
+            <div className="vr mx-2 d-none d-md-block" style={{ backgroundColor: '#dee2e6', width: '1px', height: '24px' }}></div>
+            
+            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link-danger flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={handleLogout}>
+              <FaSignOutAlt size={14}/> Sair
+            </button>
           </div>
         </Container>
       </div>
 
-      <Container>
+      <Container className="pt-4 pt-md-5">
         <div className="mb-4">
-          <h2 className="mb-0" style={{fontFamily: 'Playfair Display'}}>Gestão de Pedidos</h2>
-          <p className="text-muted small mt-1">{pedidos.length} pedidos registrados</p>
+          <h2 className="mb-0 admin-header-title text-dark fw-bold" style={{fontFamily: 'Playfair Display'}}>Gestão de Pedidos</h2>
+          <p className="text-muted small mt-1 letter-spacing-1">{pedidos.length} pedidos registrados</p>
         </div>
 
-        <Card className="border-0 shadow-sm rounded-0 overflow-hidden">
+        {/* LISTAGEM DE PEDIDOS */}
+        <div className="bg-white table-container">
           {loading ? (
             <div className="text-center py-5"><Spinner animation="border" /></div>
           ) : (
-            <div className="table-responsive">
-              <Table hover className="mb-0 align-middle bg-white text-nowrap table-mobile">
-                <thead className="bg-light">
+            <div className="table-responsive horizontal-scroll">
+              <Table className="mb-0 align-middle bg-white text-nowrap admin-table table-mobile">
+                <thead className="bg-light border-bottom">
                   <tr className="text-uppercase text-muted" style={{fontSize: '0.75rem', letterSpacing: '1px'}}>
-                    <th className="ps-3 ps-md-4 py-3 fw-semibold">Pedido</th>
-                    <th className="py-3 fw-semibold">Data</th>
-                    <th className="py-3 fw-semibold">Cliente</th>
-                    <th className="py-3 fw-semibold">Status</th>
-                    <th className="text-end pe-3 pe-md-4 py-3 fw-semibold">Ação</th>
+                    <th className="ps-2 ps-md-4 py-3 fw-bold border-0">Pedido</th>
+                    <th className="py-3 fw-bold border-0">Data</th>
+                    <th className="py-3 fw-bold border-0">Cliente</th>
+                    <th className="py-3 fw-bold border-0 text-center">Status</th>
+                    <th className="text-end pe-2 pe-md-4 py-3 fw-bold border-0">Ação</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="border-top-0">
                   {pedidos.map(pedido => (
-                    <tr key={pedido.id}>
-                      <td className="ps-3 ps-md-4 py-2 py-md-3 fw-bold">#{pedido.id}</td>
-                      <td className="py-2 py-md-3">{new Date(pedido.created_at).toLocaleDateString('pt-BR')}</td>
-                      <td className="py-2 py-md-3">
-                        <div className="fw-bold text-dark">{pedido.perfis?.nome?.split(' ')[0] || 'Cliente'}</div>
-                        <div className="small text-muted">R$ {pedido.total.toFixed(2).replace('.', ',')}</div>
+                    <tr key={pedido.id} className="border-bottom border-light">
+                      <td className="ps-2 ps-md-4 py-3 fw-bold text-dark">#{pedido.id}</td>
+                      <td className="py-3 text-muted">{new Date(pedido.created_at).toLocaleDateString('pt-BR')}</td>
+                      <td className="py-3">
+                        <div className="fw-bold text-dark text-truncate" style={{maxWidth: '120px'}}>{pedido.perfis?.nome?.split(' ')[0] || 'Cliente'}</div>
+                        <div className="small text-success fw-semibold mt-1">R$ {pedido.total.toFixed(2).replace('.', ',')}</div>
                       </td>
-                      <td className="py-2 py-md-3">
-                        <Badge bg={getStatusColor(pedido.status)} className="rounded-0 fw-normal badge-mobile">
+                      <td className="py-3 text-center">
+                        <Badge bg={getStatusColor(pedido.status)} className="rounded-1 fw-normal px-2 py-1 shadow-sm badge-mobile">
                           {pedido.status}
                         </Badge>
                       </td>
-                      <td className="text-end pe-3 pe-md-4 py-2 py-md-3">
-                        <Button variant="outline-dark" size="sm" className="rounded-0 px-2 px-md-3 d-inline-flex align-items-center gap-1" onClick={() => abrirDetalhes(pedido)}>
-                          <FaEye /> <span className="d-none d-md-inline">Abrir</span>
+                      <td className="text-end pe-2 pe-md-4 py-3">
+                        <Button variant="light" size="sm" className="border border-secondary-subtle rounded-2 px-md-3 py-md-2 btn-acao-mobile action-btn shadow-sm text-dark d-inline-flex align-items-center justify-content-center" onClick={() => abrirDetalhes(pedido)}>
+                          <FaEye /> <span className="d-none d-md-inline ms-2 fw-semibold">Abrir</span>
                         </Button>
                       </td>
                     </tr>
                   ))}
                   {pedidos.length === 0 && (
-                    <tr><td colSpan="5" className="text-center py-5 text-muted">Nenhum pedido recebido ainda.</td></tr>
+                    <tr>
+                      <td colSpan="5" className="text-center py-5">
+                         <FaBoxOpen size={40} className="text-muted opacity-25 mb-3" />
+                         <h5 className="text-muted">Nenhum pedido recebido.</h5>
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </Table>
             </div>
           )}
-        </Card>
+        </div>
 
         <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
-          <Modal.Header closeButton className="border-0 pb-0 pt-4 px-4">
+          <Modal.Header closeButton className="border-bottom pb-3 pt-4 px-4 bg-light rounded-top-2">
             <Modal.Title style={{fontFamily: 'Playfair Display'}} className="fw-bold text-dark fs-3">
               Pedido <span className="text-muted">#{pedidoSelecionado?.id}</span>
             </Modal.Title>
           </Modal.Header>
 
-          <Modal.Body className="p-4 modal-body-mobile">
+          <Modal.Body className="p-4 modal-body-mobile bg-white rounded-bottom-2">
             {loadingDetalhes ? (
               <div className="text-center py-4"><Spinner animation="border" /></div>
             ) : (
               <>
                 <Row className="gy-4 mb-4">
                   <Col md={6}>
-                    <h6 className="text-uppercase small fw-bold text-muted mb-3 letter-spacing-1 border-bottom pb-2"><FaUser className="me-2"/> Cliente</h6>
-                    <div className="bg-light p-3 border border-secondary-subtle h-100">
+                    <h6 className="text-uppercase small fw-bold text-muted mb-2 letter-spacing-1 d-flex align-items-center gap-2"><FaUser/> Cliente</h6>
+                    <div className="bg-light p-3 rounded-2 h-100 border-0">
                       <div className="fw-bold text-dark mb-1 fs-5">{pedidoSelecionado?.perfis?.nome || 'N/A'}</div>
-                      <div className="text-muted small mb-2"><FaWhatsapp className="me-1"/> {pedidoSelecionado?.perfis?.telefone || 'Telefone não cadastrado'}</div>
+                      <div className="text-muted small"><FaWhatsapp className="me-1 text-success"/> {pedidoSelecionado?.perfis?.telefone || 'Telefone não cadastrado'}</div>
                     </div>
                   </Col>
 
                   <Col md={6}>
-                    <h6 className="text-uppercase small fw-bold text-muted mb-3 letter-spacing-1 border-bottom pb-2"><FaMapMarkerAlt className="me-2"/> Entrega</h6>
-                    <div className="bg-light p-3 border border-secondary-subtle h-100">
+                    <h6 className="text-uppercase small fw-bold text-muted mb-2 letter-spacing-1 d-flex align-items-center gap-2"><FaMapMarkerAlt/> Entrega</h6>
+                    <div className="bg-light p-3 rounded-2 h-100 border-0">
                       <div className="text-muted small" style={{lineHeight: '1.6'}}>
                         {pedidoSelecionado?.endereco_entrega ? (
                           pedidoSelecionado.endereco_entrega
@@ -194,57 +247,63 @@ export default function AdminPedidos() {
                   </Col>
                 </Row>
 
-                <h6 className="text-uppercase small fw-bold text-muted mb-3 letter-spacing-1 border-bottom pb-2"><FaTruck className="me-2"/> Controle de Envio</h6>
-                <div className="p-3 p-md-4 border border-dark mb-4" style={{backgroundColor: '#f8f9fa'}}>
-                  {msgStatus && (
-                    <Alert variant={msgStatus.tipo} className="rounded-0 py-2 small mb-3 d-flex align-items-center gap-2">
-                      <FaCheckCircle /> {msgStatus.texto}
-                    </Alert>
-                  )}
-                  <Form onSubmit={handleSalvarStatus}>
-                    <Row className="gy-3 align-items-end">
-                      <Col md={5}>
-                        <Form.Label className="small fw-bold text-dark">Status do Pedido</Form.Label>
-                        <Form.Select className="rounded-0 border-secondary-subtle shadow-none bg-white" value={novoStatus} onChange={e => setNovoStatus(e.target.value)}>
-                          {listaStatus.map(status => <option key={status} value={status}>{status}</option>)}
-                        </Form.Select>
-                      </Col>
-                      <Col md={4}>
-                        <Form.Label className="small fw-bold text-dark">Código de Rastreio</Form.Label>
-                        <Form.Control type="text" className="rounded-0 border-secondary-subtle shadow-none bg-white" placeholder="Ex: BR123456789BR" value={novoRastreio} onChange={e => setNovoRastreio(e.target.value)} />
-                      </Col>
-                      <Col md={3}>
-                        <Button variant="dark" type="submit" className="w-100 rounded-0 fw-bold text-uppercase" disabled={salvandoStatus}>
-                          {salvandoStatus ? <Spinner size="sm" animation="border" /> : 'Atualizar'}
-                        </Button>
-                      </Col>
-                    </Row>
-                  </Form>
-                </div>
-
-                <h6 className="text-uppercase small fw-bold text-muted mb-3 letter-spacing-1 border-bottom pb-2"><FaBoxOpen className="me-2"/> Resumo da Compra</h6>
-                <div className="border border-secondary-subtle bg-white">
-                  <ul className="list-group list-group-flush">
-                    {itensPedido.map(item => (
-                      <li key={item.id} className="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
-                        <div>
-                          <span className="fw-bold text-dark me-2">{item.quantidade}x</span> 
-                          <span className="text-dark small">{item.nome_produto}</span>
-                          {item.tamanho && <Badge bg="secondary" className="ms-2 rounded-0 small">Tam: {item.tamanho}</Badge>}
-                        </div>
-                        <span className="text-muted fw-bold small">R$ {(item.preco_unitario * item.quantidade).toFixed(2).replace('.', ',')}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="bg-light p-3 d-flex justify-content-between align-items-center border-top">
-                    <span className="text-uppercase fw-bold text-muted small">Total</span>
-                    <h4 className="mb-0 fw-bold text-success">R$ {pedidoSelecionado?.total?.toFixed(2).replace('.', ',')}</h4>
+                <div className="mb-4">
+                  <h6 className="text-uppercase small fw-bold text-muted mb-2 letter-spacing-1 d-flex align-items-center gap-2"><FaTruck/> Controle de Envio</h6>
+                  <div className="p-3 p-md-4 border border-secondary-subtle bg-white shadow-sm rounded-2">
+                    {msgStatus && (
+                      <Alert variant={msgStatus.tipo} className="rounded-2 py-2 small mb-3 d-flex align-items-center gap-2 fw-bold">
+                        <FaCheckCircle /> {msgStatus.texto}
+                      </Alert>
+                    )}
+                    <Form onSubmit={handleSalvarStatus}>
+                      <Row className="gy-3 align-items-end">
+                        <Col md={5}>
+                          <Form.Label className="small fw-bold text-dark">Status do Pedido</Form.Label>
+                          <Form.Select className="rounded-2 border-secondary-subtle input-mobile bg-light" value={novoStatus} onChange={e => setNovoStatus(e.target.value)}>
+                            {listaStatus.map(status => <option key={status} value={status}>{status}</option>)}
+                          </Form.Select>
+                        </Col>
+                        <Col md={4}>
+                          <Form.Label className="small fw-bold text-dark">Código de Rastreio</Form.Label>
+                          <Form.Control type="text" className="rounded-2 border-secondary-subtle input-mobile bg-light" placeholder="Ex: BR123456789BR" value={novoRastreio} onChange={e => setNovoRastreio(e.target.value)} />
+                        </Col>
+                        <Col md={3}>
+                          <Button variant="dark" type="submit" className="w-100 rounded-2 fw-bold text-uppercase action-btn btn-mobile-full" disabled={salvandoStatus}>
+                            {salvandoStatus ? <Spinner size="sm" animation="border" /> : 'Atualizar'}
+                          </Button>
+                        </Col>
+                      </Row>
+                    </Form>
                   </div>
                 </div>
+
+                <div>
+                  <h6 className="text-uppercase small fw-bold text-muted mb-2 letter-spacing-1 d-flex align-items-center gap-2"><FaBoxOpen/> Resumo da Compra</h6>
+                  <div className="border border-secondary-subtle rounded-2 bg-white overflow-hidden">
+                    <ul className="list-group list-group-flush">
+                      {itensPedido.map(item => (
+                        <li key={item.id} className="list-group-item d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                          <div className="d-flex align-items-center gap-2">
+                            <Badge bg="light" text="dark" className="border border-secondary-subtle font-monospace px-2">{item.quantidade}x</Badge>
+                            <span className="text-dark small fw-semibold">{item.nome_produto}</span>
+                            {item.tamanho && <span className="text-muted small ms-1">(Tam: {item.tamanho})</span>}
+                          </div>
+                          <span className="text-muted fw-bold small">R$ {(item.preco_unitario * item.quantidade).toFixed(2).replace('.', ',')}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="bg-light p-3 d-flex justify-content-between align-items-center border-top border-secondary-subtle">
+                      <span className="text-uppercase fw-bold text-muted small letter-spacing-1">Total Recebido</span>
+                      <h4 className="mb-0 fw-bold text-success">R$ {pedidoSelecionado?.total?.toFixed(2).replace('.', ',')}</h4>
+                    </div>
+                  </div>
+                </div>
+
               </>
             )}
           </Modal.Body>
         </Modal>
+
       </Container>
     </div>
   );
