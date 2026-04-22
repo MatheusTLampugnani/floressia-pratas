@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Form, Button, Alert, Spinner, Table, Badge, Row, Col, Card, Modal } from 'react-bootstrap';
-import { Link } from 'react-router-dom'; 
-import { FaEdit, FaTrash, FaArrowLeft, FaExclamationTriangle } from 'react-icons/fa'; 
+import { Link, useNavigate } from 'react-router-dom'; 
+import { FaEdit, FaTrash, FaArrowLeft, FaExclamationTriangle, FaStore, FaTags, FaBoxOpen, FaUsers, FaSignOutAlt, FaClipboardList } from 'react-icons/fa'; 
 import { supabase } from '../supabase';
 
 export default function Fornecedores() {
@@ -14,6 +14,13 @@ export default function Fornecedores() {
 
   const [nome, setNome] = useState('');
   const [codigo, setCodigo] = useState('');
+  const navigate = useNavigate();
+
+  const [showCategoriaModal, setShowCategoriaModal] = useState(false);
+  const [categoriasLista, setCategoriasLista] = useState([]);
+  const [novaCategoria, setNovaCategoria] = useState('');
+  const [loadingCategoria, setLoadingCategoria] = useState(false);
+  const [erroCategoria, setErroCategoria] = useState(null);
 
   useEffect(() => {
     fetchFornecedores();
@@ -85,6 +92,50 @@ export default function Fornecedores() {
     }
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    navigate('/login');
+  }
+
+  async function carregarCategorias() {
+    const { data } = await supabase.from('categorias').select('*').order('nome');
+    if (data) setCategoriasLista(data);
+  }
+
+  function abrirModalCategorias() {
+    setErroCategoria(null);
+    carregarCategorias();
+    setShowCategoriaModal(true);
+  }
+
+  async function handleAddCategoria(e) {
+    e.preventDefault();
+    if (!novaCategoria.trim()) return;
+    setLoadingCategoria(true);
+    setErroCategoria(null);
+
+    try {
+      const { error } = await supabase.from('categorias').insert([{ nome: novaCategoria.trim() }]);
+      if (error) throw error;
+      setNovaCategoria('');
+      carregarCategorias(); 
+    } catch (error) { setErroCategoria("Erro ao adicionar categoria. Talvez ela já exista."); } 
+    finally { setLoadingCategoria(false); }
+  }
+
+  function confirmarExclusaoCategoria(id) {
+    setConfirmData({
+      titulo: 'Excluir Categoria',
+      mensagem: 'Tem certeza que deseja excluir esta categoria? As peças que usam ela podem ficar sem categoria.',
+      acao: async () => {
+        await supabase.from('categorias').delete().eq('id', id);
+        carregarCategorias();
+        setShowConfirm(false);
+      }
+    });
+    setShowConfirm(true);
+  }
+
   return (
     <div style={{ backgroundColor: '#f4f6f8', minHeight: '100vh', paddingBottom: '5rem' }}>
       
@@ -98,6 +149,15 @@ export default function Fornecedores() {
         .action-btn:hover { transform: translateY(-2px); }
         .modal-backdrop.show { opacity: 0.7; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); background-color: #000; }
 
+        .horizontal-scroll { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .horizontal-scroll::-webkit-scrollbar { display: none; }
+        
+        .admin-nav-link { color: #495057; font-weight: 600; text-decoration: none; padding: 8px 16px; border-radius: 6px; transition: all 0.2s ease; background: transparent; border: none; }
+        .admin-nav-link:hover { background-color: #f1f3f5; color: #000; }
+        
+        .admin-nav-link-danger { color: #dc3545; font-weight: 600; text-decoration: none; padding: 8px 16px; border-radius: 6px; transition: all 0.2s ease; background: transparent; border: none; }
+        .admin-nav-link-danger:hover { background-color: #fee2e2; color: #c92a2a; }
+
         @media (max-width: 768px) {
           .admin-header-title { font-size: 1.6rem !important; }
           .table-mobile-font { font-size: 0.85rem !important; }
@@ -106,20 +166,58 @@ export default function Fornecedores() {
           .btn-mobile-full { width: 100% !important; font-size: 0.95rem !important; padding: 14px !important; letter-spacing: 1px; }
           .modal-body-mobile { padding: 20px 15px !important; }
           .modal-title-mobile { font-size: 1.3rem !important; }
-          .col-prefix { width: 80px !important; } /* Diminui a largura da coluna no mobile */
+          .col-prefix { width: 80px !important; }
+          .nav-btn-mobile { flex: 1 0 auto; font-size: 0.85rem !important; }
         }
       `}</style>
 
-      {/* BARRA DE TOPO */}
-      <div className="bg-white border-bottom shadow-sm py-3 mb-4 mb-md-5 sticky-top" style={{ zIndex: 1020 }}>
-        <Container>
-          <Link to="/admin" className="text-decoration-none text-dark d-flex align-items-center fw-bold" style={{fontFamily: 'Playfair Display', fontSize: '1.2rem', transition: 'opacity 0.2s'}} onMouseOver={e=>e.currentTarget.style.opacity=0.7} onMouseOut={e=>e.currentTarget.style.opacity=1}>
-            <FaArrowLeft className="me-2 fs-6 text-muted" /> Voltar ao Painel
-          </Link>
+      {/* --- CABEÇALHO --- */}
+      <div className="bg-white border-bottom shadow-sm sticky-top" style={{ zIndex: 1020 }}>
+        <Container className="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center py-3 gap-3">
+          
+          <div className="d-flex align-items-center flex-shrink-0" style={{ minWidth: '220px' }}>
+            <Link to="/minha-conta" className="text-decoration-none text-dark d-flex align-items-center fw-bold text-nowrap" style={{fontFamily: 'Playfair Display', fontSize: '1.2rem', transition: 'opacity 0.2s'}} onMouseOver={e=>e.currentTarget.style.opacity=0.7} onMouseOut={e=>e.currentTarget.style.opacity=1}>
+              <FaArrowLeft className="me-2 fs-6 text-muted" /> Minha Conta
+            </Link>
+          </div>
+          
+          <div className="horizontal-scroll d-flex align-items-center justify-content-start justify-content-lg-center gap-2 w-100 pb-1 pb-lg-0 m-0">
+            
+            <Link to="/" className="d-flex align-items-center justify-content-center gap-2 px-3 py-2 rounded-2 text-uppercase fw-bold text-primary bg-primary bg-opacity-10 text-decoration-none flex-shrink-0 transition-all" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+              <FaStore size={14} /> Ver Loja
+            </Link>
+
+            <div className="vr d-none d-lg-block mx-2" style={{ backgroundColor: '#dee2e6', width: '2px', height: '24px' }}></div>
+
+            <Link to="/admin" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+              <FaClipboardList size={14} className="text-secondary opacity-75"/> Catálogo
+            </Link>
+            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={abrirModalCategorias}>
+              <FaTags size={14} className="text-secondary opacity-75"/> Categorias
+            </button>
+            <Link to="/admin/pedidos" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+              <FaBoxOpen size={14} className="text-secondary opacity-75"/> Pedidos
+            </Link>
+            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link text-dark bg-light flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+              <FaUsers size={14} className="text-dark"/> Fornecedores
+            </button>
+
+            <div className="vr d-lg-none mx-1" style={{ backgroundColor: '#dee2e6', width: '2px', height: '24px' }}></div>
+            <button className="d-flex d-lg-none align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link-danger flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={handleLogout}>
+              <FaSignOutAlt size={14}/> Sair
+            </button>
+          </div>
+
+          <div className="d-none d-lg-flex align-items-center justify-content-end flex-shrink-0" style={{ minWidth: '220px' }}>
+            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link-danger" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={handleLogout}>
+              <FaSignOutAlt size={14}/> Sair
+            </button>
+          </div>
+
         </Container>
       </div>
 
-      <Container style={{ maxWidth: '800px' }}>
+      <Container style={{ maxWidth: '800px' }} className="pt-4 pt-md-5">
         
         {/* CABEÇALHO DA PÁGINA */}
         <div className="d-flex justify-content-between align-items-center mb-4">
@@ -220,6 +318,42 @@ export default function Fornecedores() {
             </Table>
           </div>
         </div>
+
+        {/* MODAL DE CATEGORIAS */}
+        <Modal show={showCategoriaModal} onHide={() => setShowCategoriaModal(false)} centered>
+          <Modal.Header closeButton className="border-bottom pb-3 bg-light rounded-top-2">
+            <Modal.Title style={{fontFamily: 'Playfair Display'}} className="modal-title-mobile fw-bold">Gerenciar Categorias</Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="pt-4 pb-4 modal-body-mobile bg-white rounded-bottom-2">
+          
+          {erroCategoria && (
+            <Alert variant="danger" className="rounded-2 p-2 text-center small mb-3 fw-bold shadow-sm">
+              <FaExclamationTriangle className="me-2"/> {erroCategoria}
+            </Alert>
+          )}
+
+          <Form onSubmit={handleAddCategoria} className="d-flex flex-column flex-sm-row gap-2 mb-4 p-3 bg-light border border-secondary-subtle shadow-sm rounded-2">
+            <Form.Control type="text" placeholder="Ex: Tornozeleiras" className="rounded-2 input-mobile border-secondary-subtle" value={novaCategoria} onChange={e => setNovaCategoria(e.target.value)} required />
+            <Button variant="dark" type="submit" className="rounded-2 px-4 fw-bold letter-spacing-1 action-btn shadow-sm" disabled={loadingCategoria}>
+              {loadingCategoria ? <Spinner size="sm" animation="border" /> : 'ADICIONAR'}
+            </Button>
+          </Form>
+
+          <h6 className="text-uppercase small fw-bold text-muted mb-3 letter-spacing-1 border-bottom pb-2">Categorias Ativas</h6>
+          {categoriasLista.length === 0 ? (
+            <p className="text-muted small">Nenhuma categoria cadastrada.</p>
+          ) : (
+            <ul className="list-group list-group-flush border border-secondary-subtle shadow-sm rounded-2 overflow-hidden">
+              {categoriasLista.map(cat => (
+                <li key={cat.id} className="list-group-item d-flex justify-content-between align-items-center py-2 px-3 border-bottom">
+                  <span className="text-dark fw-bold" style={{fontSize: '0.95rem'}}>{cat.nome}</span>
+                  <button onClick={() => confirmarExclusaoCategoria(cat.id)} className="btn btn-link text-danger p-2 text-decoration-none action-btn hover-danger"><FaTrash size={16} /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+          </Modal.Body>
+        </Modal>
 
         {/* MODAL DE CONFIRMAÇÃO */}
         <Modal show={showConfirm} onHide={() => setShowConfirm(false)} centered backdrop="static">

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Container, Table, Badge, Button, Modal, Spinner, Form, Row, Col, Card, Alert } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
-import { FaArrowLeft, FaBoxOpen, FaEye, FaTruck, FaMapMarkerAlt, FaUser, FaCheckCircle, FaWhatsapp, FaTags, FaUsers, FaSignOutAlt } from 'react-icons/fa';
+import { Container, Table, Badge, Button, Modal, Spinner, Form, Row, Col, Alert } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
+import { FaArrowLeft, FaBoxOpen, FaEye, FaTruck, FaMapMarkerAlt, FaUser, FaCheckCircle, FaWhatsapp, FaTags, FaUsers, FaSignOutAlt, FaStore, FaExclamationTriangle, FaTrash, FaClipboardList } from 'react-icons/fa';
 import { supabase } from '../supabase';
 
 export default function AdminPedidos() {
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const [showModal, setShowModal] = useState(false);
   const [pedidoSelecionado, setPedidoSelecionado] = useState(null);
@@ -17,6 +18,14 @@ export default function AdminPedidos() {
   const [novoRastreio, setNovoRastreio] = useState('');
   const [salvandoStatus, setSalvandoStatus] = useState(false);
   const [msgStatus, setMsgStatus] = useState(null);
+
+  const [showCategoriaModal, setShowCategoriaModal] = useState(false);
+  const [categoriasLista, setCategoriasLista] = useState([]);
+  const [novaCategoria, setNovaCategoria] = useState('');
+  const [loadingCategoria, setLoadingCategoria] = useState(false);
+  const [erroCategoria, setErroCategoria] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmData, setConfirmData] = useState({ titulo: '', mensagem: '', acao: null });
 
   const listaStatus = ['Aguardando Pagamento', 'Pagamento Confirmado', 'Em Separação', 'Enviado', 'Entregue', 'Cancelado'];
 
@@ -79,7 +88,46 @@ export default function AdminPedidos() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    window.location.href = '/login';
+    navigate('/login');
+  }
+
+  async function carregarCategorias() {
+    const { data } = await supabase.from('categorias').select('*').order('nome');
+    if (data) setCategoriasLista(data);
+  }
+
+  function abrirModalCategorias() {
+    setErroCategoria(null);
+    carregarCategorias();
+    setShowCategoriaModal(true);
+  }
+
+  async function handleAddCategoria(e) {
+    e.preventDefault();
+    if (!novaCategoria.trim()) return;
+    setLoadingCategoria(true);
+    setErroCategoria(null);
+
+    try {
+      const { error } = await supabase.from('categorias').insert([{ nome: novaCategoria.trim() }]);
+      if (error) throw error;
+      setNovaCategoria('');
+      carregarCategorias(); 
+    } catch (error) { setErroCategoria("Erro ao adicionar categoria. Talvez ela já exista."); } 
+    finally { setLoadingCategoria(false); }
+  }
+
+  function confirmarExclusaoCategoria(id) {
+    setConfirmData({
+      titulo: 'Excluir Categoria',
+      mensagem: 'Tem certeza que deseja excluir esta categoria? As peças que usam ela podem ficar sem categoria.',
+      acao: async () => {
+        await supabase.from('categorias').delete().eq('id', id);
+        carregarCategorias();
+        setShowConfirm(false);
+      }
+    });
+    setShowConfirm(true);
   }
 
   const getStatusColor = (status) => {
@@ -116,42 +164,61 @@ export default function AdminPedidos() {
           .admin-header-title { font-size: 1.6rem !important; }
           .nav-btn-mobile { flex: 1 0 auto; font-size: 0.85rem !important; }
           
-          /* Ajustes cirúrgicos na tabela para caber no celular */
           .table-mobile { font-size: 0.8rem !important; }
           .table-mobile th, .table-mobile td { padding: 10px 6px !important; vertical-align: middle; }
           .badge-mobile { font-size: 0.65rem !important; padding: 5px 6px !important; }
-          .btn-acao-mobile { padding: 6px 10px !important; } /* Deixa o botão mais enxuto */
+          .btn-acao-mobile { padding: 6px 10px !important; } 
           
           .modal-body-mobile { padding: 20px 15px !important; }
           .input-mobile { padding: 12px !important; font-size: 0.95rem !important; }
           .btn-mobile-full { width: 100% !important; margin-top: 10px; padding: 12px !important; }
+          .modal-title-mobile { font-size: 1.3rem !important; }
         }
       `}</style>
 
       {/* --- CABEÇALHO --- */}
       <div className="bg-white border-bottom shadow-sm sticky-top" style={{ zIndex: 1020 }}>
-        <Container className="d-flex flex-column flex-md-row justify-content-between align-items-md-center py-2 py-md-3 gap-3 gap-md-0">
-          <Link to="/" className="text-decoration-none text-dark d-flex align-items-center fw-bold text-nowrap" style={{fontFamily: 'Playfair Display', fontSize: '1.2rem', transition: 'opacity 0.2s'}} onMouseOver={e=>e.currentTarget.style.opacity=0.7} onMouseOut={e=>e.currentTarget.style.opacity=1}>
-            <FaArrowLeft className="me-2 fs-6 text-muted" /> Voltar à Loja
-          </Link>
+        <Container className="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center py-3 gap-3">
           
-          <div className="horizontal-scroll d-flex align-items-center gap-1 ms-auto w-100 w-md-auto pb-1 pb-md-0">
-            <Link to="/admin" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
-              <FaTags size={14} className="text-secondary opacity-75"/> Categorias
+          <div className="d-flex align-items-center flex-shrink-0" style={{ minWidth: '220px' }}>
+            <Link to="/minha-conta" className="text-decoration-none text-dark d-flex align-items-center fw-bold text-nowrap" style={{fontFamily: 'Playfair Display', fontSize: '1.2rem', transition: 'opacity 0.2s'}} onMouseOver={e=>e.currentTarget.style.opacity=0.7} onMouseOut={e=>e.currentTarget.style.opacity=1}>
+              <FaArrowLeft className="me-2 fs-6 text-muted" /> Minha Conta
             </Link>
-            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link text-dark bg-light" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+          </div>
+          
+          <div className="horizontal-scroll d-flex align-items-center justify-content-start justify-content-lg-center gap-2 w-100 pb-1 pb-lg-0 m-0">
+            
+            <Link to="/" className="d-flex align-items-center justify-content-center gap-2 px-3 py-2 rounded-2 text-uppercase fw-bold text-primary bg-primary bg-opacity-10 text-decoration-none flex-shrink-0 transition-all" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+              <FaStore size={14} /> Ver Loja
+            </Link>
+
+            <div className="vr d-none d-lg-block mx-2" style={{ backgroundColor: '#dee2e6', width: '2px', height: '24px' }}></div>
+
+            <Link to="/admin" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+              <FaClipboardList size={14} className="text-secondary opacity-75"/> Catálogo
+            </Link>
+            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={abrirModalCategorias}>
+              <FaTags size={14} className="text-secondary opacity-75"/> Categorias
+            </button>
+            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link text-dark bg-light flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
               <FaBoxOpen size={14} className="text-dark"/> Pedidos
             </button>
-            <Link to="/admin/fornecedores" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+            <Link to="/admin/fornecedores" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
               <FaUsers size={14} className="text-secondary opacity-75"/> Fornecedores
             </Link>
-            
-            <div className="vr mx-2 d-none d-md-block" style={{ backgroundColor: '#dee2e6', width: '1px', height: '24px' }}></div>
-            
-            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link-danger flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={handleLogout}>
+
+            <div className="vr d-lg-none mx-1" style={{ backgroundColor: '#dee2e6', width: '2px', height: '24px' }}></div>
+            <button className="d-flex d-lg-none align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link-danger flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={handleLogout}>
               <FaSignOutAlt size={14}/> Sair
             </button>
           </div>
+
+          <div className="d-none d-lg-flex align-items-center justify-content-end flex-shrink-0" style={{ minWidth: '220px' }}>
+            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link-danger" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={handleLogout}>
+              <FaSignOutAlt size={14}/> Sair
+            </button>
+          </div>
+
         </Container>
       </div>
 
@@ -212,6 +279,7 @@ export default function AdminPedidos() {
           )}
         </div>
 
+        {/* MODAL DE DETALHES DE PEDIDO */}
         <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
           <Modal.Header closeButton className="border-bottom pb-3 pt-4 px-4 bg-light rounded-top-2">
             <Modal.Title style={{fontFamily: 'Playfair Display'}} className="fw-bold text-dark fs-3">
@@ -301,6 +369,58 @@ export default function AdminPedidos() {
 
               </>
             )}
+          </Modal.Body>
+        </Modal>
+
+        {/* MODAL DE CATEGORIAS */}
+        <Modal show={showCategoriaModal} onHide={() => setShowCategoriaModal(false)} centered>
+          <Modal.Header closeButton className="border-bottom pb-3 bg-light rounded-top-2">
+            <Modal.Title style={{fontFamily: 'Playfair Display'}} className="modal-title-mobile fw-bold">Gerenciar Categorias</Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="pt-4 pb-4 modal-body-mobile bg-white rounded-bottom-2">
+          
+          {erroCategoria && (
+            <Alert variant="danger" className="rounded-2 p-2 text-center small mb-3 fw-bold shadow-sm">
+              <FaExclamationTriangle className="me-2"/> {erroCategoria}
+            </Alert>
+          )}
+
+          <Form onSubmit={handleAddCategoria} className="d-flex flex-column flex-sm-row gap-2 mb-4 p-3 bg-light border border-secondary-subtle shadow-sm rounded-2">
+            <Form.Control type="text" placeholder="Ex: Tornozeleiras" className="rounded-2 input-mobile border-secondary-subtle" value={novaCategoria} onChange={e => setNovaCategoria(e.target.value)} required />
+            <Button variant="dark" type="submit" className="rounded-2 px-4 fw-bold letter-spacing-1 action-btn shadow-sm" disabled={loadingCategoria}>
+              {loadingCategoria ? <Spinner size="sm" animation="border" /> : 'ADICIONAR'}
+            </Button>
+          </Form>
+
+          <h6 className="text-uppercase small fw-bold text-muted mb-3 letter-spacing-1 border-bottom pb-2">Categorias Ativas</h6>
+          {categoriasLista.length === 0 ? (
+            <p className="text-muted small">Nenhuma categoria cadastrada.</p>
+          ) : (
+            <ul className="list-group list-group-flush border border-secondary-subtle shadow-sm rounded-2 overflow-hidden">
+              {categoriasLista.map(cat => (
+                <li key={cat.id} className="list-group-item d-flex justify-content-between align-items-center py-2 px-3 border-bottom">
+                  <span className="text-dark fw-bold" style={{fontSize: '0.95rem'}}>{cat.nome}</span>
+                  <button onClick={() => confirmarExclusaoCategoria(cat.id)} className="btn btn-link text-danger p-2 text-decoration-none action-btn hover-danger"><FaTrash size={16} /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+          </Modal.Body>
+        </Modal>
+
+        {/* MODAL DE CONFIRMAÇÃO */}
+        <Modal show={showConfirm} onHide={() => setShowConfirm(false)} centered backdrop="static">
+          <Modal.Header closeButton className="border-0 pb-0 pt-4 px-4 bg-white rounded-top-2">
+            <Modal.Title style={{fontFamily: 'Playfair Display'}} className="text-danger fw-bold modal-title-mobile fs-3 d-flex align-items-center gap-2">
+              <FaExclamationTriangle /> {confirmData.titulo}
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body className="pt-2 pb-4 px-4 modal-body-mobile bg-white rounded-bottom-2">
+            <p className="text-dark fs-5 mt-2">{confirmData.mensagem}</p>
+            <div className="d-flex flex-column flex-sm-row justify-content-end gap-3 mt-4 pt-4 border-top border-secondary-subtle">
+              <Button variant="outline-dark" size="lg" className="rounded-2 px-4 w-100 w-sm-auto fw-bold" onClick={() => setShowConfirm(false)}>CANCELAR</Button>
+              <Button variant="danger" size="lg" className="rounded-2 px-5 fw-bold w-100 w-sm-auto shadow-sm action-btn" onClick={confirmData.acao}>SIM, EXCLUIR</Button>
+            </div>
           </Modal.Body>
         </Modal>
 

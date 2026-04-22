@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Form, Button, Alert, Spinner, Table, Badge, Row, Col, Card, Modal } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom'; 
-import { FaBoxOpen, FaSignOutAlt, FaTrash, FaTags, FaArrowLeft, FaImage, FaEdit, FaExclamationTriangle, FaPlus, FaUsers } from 'react-icons/fa';
+import { FaBoxOpen, FaSignOutAlt, FaTrash, FaTags, FaArrowLeft, FaImage, FaEdit, FaExclamationTriangle, FaPlus, FaUsers, FaStore, FaClipboardList } from 'react-icons/fa';
 import { supabase } from '../supabase';
 import imageCompression from 'browser-image-compression'; 
 
@@ -221,7 +221,6 @@ export default function Admin() {
 
   return (
     <div style={{ backgroundColor: '#f4f6f8', minHeight: '100vh', paddingBottom: '5rem' }}>
-      
       <style>{`
         .form-control:focus, .form-select:focus { border-color: #212529; box-shadow: none; background-color: #fff !important; }
         
@@ -285,27 +284,43 @@ export default function Admin() {
 
       {/* --- CABEÇALHO --- */}
       <div className="bg-white border-bottom shadow-sm sticky-top" style={{ zIndex: 1020 }}>
-        <Container className="d-flex flex-column flex-md-row justify-content-between align-items-md-center py-2 py-md-3 gap-3 gap-md-0">
+        <Container className="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center py-3 gap-3">
+
+          <div className="d-flex align-items-center flex-shrink-0" style={{ minWidth: '220px' }}>
+            <Link to="/minha-conta" className="text-decoration-none text-dark d-flex align-items-center fw-bold text-nowrap" style={{fontFamily: 'Playfair Display', fontSize: '1.2rem', transition: 'opacity 0.2s'}} onMouseOver={e=>e.currentTarget.style.opacity=0.7} onMouseOut={e=>e.currentTarget.style.opacity=1}>
+              <FaArrowLeft className="me-2 fs-6 text-muted" /> Minha Conta
+            </Link>
+          </div>
           
-          <Link to="/" className="text-decoration-none text-dark d-flex align-items-center fw-bold text-nowrap" style={{fontFamily: 'Playfair Display', fontSize: '1.2rem', transition: 'opacity 0.2s'}} onMouseOver={e=>e.currentTarget.style.opacity=0.7} onMouseOut={e=>e.currentTarget.style.opacity=1}>
-            <FaArrowLeft className="me-2 fs-6 text-muted" /> Voltar à Loja
-          </Link>
-          
-          <div className="horizontal-scroll d-flex align-items-center gap-1 ms-auto w-100 w-md-auto pb-1 pb-md-0">
-            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={abrirModalCategorias}>
+          <div className="horizontal-scroll d-flex align-items-center justify-content-start justify-content-lg-center gap-2 w-100 pb-1 pb-lg-0 m-0">
+            
+            <Link to="/" className="d-flex align-items-center justify-content-center gap-2 px-3 py-2 rounded-2 text-uppercase fw-bold text-primary bg-primary bg-opacity-10 text-decoration-none flex-shrink-0 transition-all" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+              <FaStore size={14} /> Ver Loja
+            </Link>
+
+            <div className="vr d-none d-lg-block mx-2" style={{ backgroundColor: '#dee2e6', width: '2px', height: '24px' }}></div>
+
+            <Link to="/admin" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+              <FaClipboardList size={14} className="text-secondary opacity-75"/> Catálogo
+            </Link>
+            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={typeof abrirModalCategorias !== 'undefined' ? abrirModalCategorias : null}>
               <FaTags size={14} className="text-secondary opacity-75"/> Categorias
             </button>
-            <Link to="/admin/pedidos" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+            <Link to="/admin/pedidos" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
               <FaBoxOpen size={14} className="text-secondary opacity-75"/> Pedidos
             </Link>
-            <Link to="/admin/fornecedores" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
+            <Link to="/admin/fornecedores" className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}}>
               <FaUsers size={14} className="text-secondary opacity-75"/> Fornecedores
             </Link>
-            
-            {/* Divisor vertical sutil no PC */}
-            <div className="vr mx-2 d-none d-md-block" style={{ backgroundColor: '#dee2e6', width: '1px', height: '24px' }}></div>
-            
-            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link-danger flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={handleLogout}>
+
+            <div className="vr d-lg-none mx-1" style={{ backgroundColor: '#dee2e6', width: '2px', height: '24px' }}></div>
+            <button className="d-flex d-lg-none align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link-danger flex-shrink-0" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={typeof handleLogout !== 'undefined' ? handleLogout : null}>
+              <FaSignOutAlt size={14}/> Sair
+            </button>
+          </div>
+
+          <div className="d-none d-lg-flex align-items-center justify-content-end flex-shrink-0" style={{ minWidth: '220px' }}>
+            <button className="d-flex align-items-center justify-content-center gap-2 nav-btn-mobile text-uppercase admin-nav-link-danger" style={{fontSize: '0.75rem', letterSpacing: '0.5px'}} onClick={typeof handleLogout !== 'undefined' ? handleLogout : null}>
               <FaSignOutAlt size={14}/> Sair
             </button>
           </div>
@@ -316,7 +331,7 @@ export default function Admin() {
       <Container className="pt-4 pt-md-5">
         {mensagem && <Alert variant={mensagem.tipo} dismissible onClose={() => setMensagem(null)} className="rounded-2 border-0 shadow-sm mb-4 fw-bold">{mensagem.texto}</Alert>}
 
-        {/* ÁREA SUPERIOR: TÍTULO E BOTÃO */}
+        {/* TÍTULO E BOTÃO */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 gap-3">
           <div>
             <h2 className="mb-0 admin-header-title text-dark fw-bold" style={{fontFamily: 'Playfair Display'}}>Catálogo de Peças</h2>
