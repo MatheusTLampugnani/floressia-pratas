@@ -358,6 +358,17 @@ function Header({ searchTerm, setSearchTerm }) {
           </div>
 
           <div className="d-flex align-items-center gap-3 gap-md-4 flex-shrink-0">
+            
+            {userEmail === 'admin@floressia.com' && (
+              <Link to="/admin" className="text-dark d-flex align-items-center gap-2 text-decoration-none nav-icon-link" title="Painel Admin">
+                <FaLock className="fs-4 text-danger" />
+                <div className="d-none d-lg-flex flex-column lh-1 text-start">
+                  <span className="small text-danger fw-bold" style={{fontSize: '0.7rem'}}>Área Restrita</span>
+                  <strong className="text-uppercase letter-spacing-1 text-dark" style={{fontSize: '0.8rem'}}>Admin</strong>
+                </div>
+              </Link>
+            )}
+
             <Link to="/minha-conta" className="text-dark d-flex align-items-center gap-2 text-decoration-none nav-icon-link">
               <FaUser className="fs-4 text-muted" />
               <div className="d-none d-lg-flex flex-column lh-1 text-start">
@@ -369,7 +380,7 @@ function Header({ searchTerm, setSearchTerm }) {
             </Link>
 
             <div className="vr d-none d-md-block opacity-25" style={{height: '45px'}}></div>
-            
+
             <Button variant="link" className="text-dark position-relative p-0 border-0 nav-icon-link d-flex flex-column align-items-center text-decoration-none" onClick={() => setShowCart(true)}>
               <div className="position-relative">
                 <FaShoppingCart className="fs-4 text-dark mb-1" />
@@ -492,15 +503,15 @@ function Store() {
     <>
       <div className="bg-light pb-2 mb-0 border-bottom">
         {/* <Container className="px-0 px-md-3">
-          <div className="w-100 mb-3 mb-md-4">
+          <div className="w-100 mb-2 mb-md-4">
             <Link to="/colecao/todos" className="d-block">
               <img src={inauguracaoBanner} alt="Grande Inauguração" className="w-100 img-fluid banner-home" />
             </Link>
           </div>
         </Container> */}
         
-        <Container className="d-md-none">
-          <div className="category-scroll d-flex gap-2 pb-2 px-2 justify-content-start">
+        <div className="d-md-none mt-2 mb-2">
+          <div className="category-scroll d-flex gap-2 px-3 justify-content-start">
             <button className={`cat-btn ${filtro === 'todos' ? 'cat-btn-active' : ''}`} onClick={() => setFiltro('todos')} >TODOS</button>
             {categoriasLista.map(cat => {
               const catLowerCase = cat.nome.toLowerCase();
@@ -511,13 +522,12 @@ function Store() {
               );
             })}
           </div>
-        </Container>
+        </div>
       </div>
 
       <div className="bg-light py-4 mb-4 mb-md-5 border-bottom d-none d-md-block">
         <Container>
           <Row className="gy-3 justify-content-center px-2">
-            
             <Col xs={12} md={4} className="d-flex justify-content-center align-items-center gap-2 gap-md-3">
               <FaTruck size={22} className="text-dark flex-shrink-0" />
               <div>
@@ -525,7 +535,6 @@ function Store() {
                 <small className="text-muted d-none d-md-block benefit-desc">Envios para todo Brasil</small>
               </div>
             </Col>
-            
             <Col xs={12} md={4} className="d-flex justify-content-center align-items-center gap-2 gap-md-3">
               <FaCreditCard size={22} className="text-dark flex-shrink-0" />
               <div>
@@ -533,7 +542,6 @@ function Store() {
                 <small className="text-muted d-none d-md-block benefit-desc">Parc. Min R$ 50</small>
               </div>
             </Col>
-            
             <Col xs={12} md={4} className="d-flex justify-content-center align-items-center gap-2 gap-md-3">
               <FaGem size={22} className="text-dark flex-shrink-0" />
               <div>
@@ -670,7 +678,7 @@ function Footer() {
   );
 }
 
-// --- ESTRUTURA E ESTILOS CSS GLOBAIS ---
+// --- ESTRUTURA E ESTILOS CSS ---
 function StoreLayout() {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -681,7 +689,15 @@ function StoreLayout() {
         .letter-spacing-1 { letter-spacing: 1px; }
         .divider-custom { width: 50px; height: 2px; background-color: #212529; margin: 0 auto; }
         
-        .category-scroll { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 5px; }
+        .category-scroll {
+          overflow-x: auto;
+          white-space: nowrap;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          padding-bottom: 10px;
+          padding-top: 5px;
+          scroll-padding-left: 15px;
+        }
         .category-scroll::-webkit-scrollbar { display: none; }
 
         .logo-img { max-height: 65px; width: auto; object-fit: contain; }
@@ -692,18 +708,25 @@ function StoreLayout() {
         .hover-danger:hover * { color: #dc3545 !important; }
 
         .cat-btn {
-          background-color: #fff;
-          border: 1px solid #dee2e6;
+          background-color: #f8f9fa;
+          border: 1px solid #e9ecef;
           color: #6c757d;
           border-radius: 50rem;
-          padding: 6px 20px;
+          padding: 8px 20px;
           font-size: 0.75rem;
-          letter-spacing: 1px;
+          font-weight: 600;
+          letter-spacing: 0.5px;
           flex-shrink: 0;
           transition: all 0.3s ease;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
         .cat-btn:hover { border-color: #212529; color: #212529; }
-        .cat-btn.cat-btn-active { background-color: #000; border-color: #000; color: #fff; font-weight: 600; }
+        .cat-btn.cat-btn-active {
+          background-color: #212529;
+          border-color: #212529;
+          color: #fff;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
 
         .product-image-container { position: relative; aspect-ratio: 1/1; width: 100%; display: flex; align-items: center; justify-content: center; }
         .product-img { object-fit: cover; width: 100%; height: 100%; transition: transform 0.3s ease; }
@@ -725,7 +748,6 @@ function StoreLayout() {
           .promo-badge { font-size: 0.5rem !important; padding: 3px 5px !important; }
           .fav-btn { padding: 3px !important; margin: 4px !important; }
           .fav-icon { font-size: 14px !important; }
-          .cat-btn { font-size: 0.7rem; padding: 5px 16px; }
           .modal-body { padding: 15px !important; }
           .table-responsive { border: 0 !important; }
           .cart-offcanvas { width: 85% !important; }
